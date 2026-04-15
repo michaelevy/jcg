@@ -1,0 +1,62 @@
+{{define "entry"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>{{template "head" .}}</head>
+<body>
+  {{template "nav" .}}
+  <main>
+    <h1>Record Game Result</h1>
+
+    <form method="POST" action="/enter" class="form-narrow">
+
+      <label for="season_id">Season</label>
+      <select id="season_id" name="season_id" required>
+        <option value="">— select —</option>
+        {{template "season-options" .}}
+      </select>
+
+      <details style="margin-top: 0.5rem;">
+        <summary style="cursor:pointer; font-size: 0.9rem; color: #0066cc;">+ New season</summary>
+        <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem;">
+          <input id="season_name" name="season_name" type="text" placeholder="Season name"
+                 style="flex: 1;">
+          <button type="button"
+                  hx-post="/enter/season"
+                  hx-target="#season_id"
+                  hx-swap="innerHTML"
+                  hx-include="#season_name">Add</button>
+        </div>
+      </details>
+
+      <label for="game_title">Game</label>
+      <input id="game_title" name="game_title" list="games-list" type="text" required placeholder="Start typing...">
+      <datalist id="games-list">
+        {{range .Games}}<option value="{{.Title}}">{{end}}
+      </datalist>
+
+      <label for="played_at">Date played</label>
+      <input id="played_at" name="played_at" type="date" value="{{.Today}}" required>
+
+      <fieldset style="margin-top: 1.5rem; border: 1px solid #ccc; border-radius: 4px; padding: 1rem;">
+        <legend>Scores <span style="font-weight: normal; font-size: 0.85rem;">(leave blank for absent players)</span></legend>
+        {{range .Players}}
+        <div style="display: flex; align-items: center; gap: 1rem; margin-top: 0.5rem;">
+          <label style="min-width: 120px; font-weight: normal;">{{.Name}}</label>
+          <input type="number" name="score_{{.ID}}" min="0" placeholder="score"
+                 style="width: 100px;">
+        </div>
+        {{end}}
+      </fieldset>
+
+      <button type="submit" class="btn-primary">Save result</button>
+    </form>
+  </main>
+</body>
+</html>
+{{end}}
+
+{{define "season-options"}}
+{{range .Seasons}}
+<option value="{{.ID}}" {{if eq .ID $.SelectedSeasonID}}selected{{end}}>{{.Name}}</option>
+{{end}}
+{{end}}

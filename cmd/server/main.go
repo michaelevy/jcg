@@ -52,10 +52,9 @@ func main() {
 	// TODO: add CSRF token protection before production deployment
 	mux.HandleFunc("POST /logout", h.Logout)
 
-	// /enter is protected — placeholder until Phase 3 replaces it.
-	mux.Handle("GET /enter", middleware.RequireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "entry coming in phase 3", http.StatusNotImplemented)
-	})))
+	mux.Handle("GET /enter", middleware.RequireAuth(http.HandlerFunc(h.EntryPage)))
+	mux.Handle("POST /enter", middleware.RequireAuth(http.HandlerFunc(h.EntrySubmit)))
+	mux.Handle("POST /enter/season", middleware.RequireAuth(http.HandlerFunc(h.CreateSeason)))
 
 	log.Printf("listening on %s", *addr)
 	if err := http.ListenAndServe(*addr, mux); err != nil {
