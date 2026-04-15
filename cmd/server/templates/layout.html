@@ -1,0 +1,25 @@
+{{define "head"}}
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{.Title}} – Jacksonian Gaming Council</title>
+<script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"
+        integrity="sha384-/TgkGk7p307TH7EXJDuUlgG3Ce1UVolAOFopFekQkkXihi5u/6OCvVKyz1W+idaz"
+        crossorigin="anonymous"></script>
+<link rel="stylesheet" href="/static/style.css">
+{{end}}
+
+{{define "nav"}}
+<nav>
+  <a href="/" class="brand">Jacksonian Gaming Council</a>
+  <div class="nav-links">
+    {{if .Username}}
+      <span class="nav-user">{{.Username}}</span>
+      <form method="POST" action="/logout" style="display:inline">
+        <button type="submit" class="btn-link">Logout</button>
+      </form>
+    {{else}}
+      <a href="/login">Login</a>
+    {{end}}
+  </div>
+</nav>
+{{end}}
