@@ -1,0 +1,24 @@
+{{define "login"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>{{template "head" .}}</head>
+<body>
+  {{template "nav" .}}
+  <main>
+    <h1>Login</h1>
+    {{if .Error}}
+      <p class="error">{{.Error}}</p>
+    {{end}}
+    <form method="POST" action="/login" class="form-narrow">
+      <label for="username">Username</label>
+      <input id="username" name="username" type="text" required autofocus>
+
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" required>
+
+      <button type="submit">Login</button>
+    </form>
+  </main>
+</body>
+</html>
+{{end}}

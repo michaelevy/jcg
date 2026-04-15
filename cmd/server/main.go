@@ -10,6 +10,7 @@ import (
 
 	"jcg/internal/db"
 	"jcg/internal/handlers"
+	"jcg/internal/middleware"
 )
 
 // Templates and static assets live alongside main.go under cmd/server/
@@ -44,6 +45,15 @@ func main() {
 	mux := http.NewServeMux()
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticSub))))
 	mux.HandleFunc("GET /{$}", h.Home)
+
+	mux.HandleFunc("GET /login", h.LoginPage)
+	mux.HandleFunc("POST /login", h.LoginSubmit)
+	mux.HandleFunc("POST /logout", h.Logout)
+
+	// /enter is protected — placeholder until Phase 3 replaces it.
+	mux.Handle("GET /enter", middleware.RequireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "entry coming in phase 3", http.StatusNotImplemented)
+	})))
 
 	log.Printf("listening on %s", *addr)
 	if err := http.ListenAndServe(*addr, mux); err != nil {
