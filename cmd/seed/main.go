@@ -43,7 +43,7 @@ func main() {
 			log.Fatalf("bcrypt: %v", err)
 		}
 		_, err = database.Exec(
-			`INSERT OR REPLACE INTO users (username, password_hash) VALUES (?, ?)`,
+			`INSERT INTO users (username, password_hash) VALUES (?, ?) ON CONFLICT(username) DO UPDATE SET password_hash = excluded.password_hash`,
 			*username, string(hash),
 		)
 		if err != nil {

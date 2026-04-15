@@ -23,6 +23,7 @@ type sessionEntry struct {
 }
 
 var store sync.Map // map[string]sessionEntry
+// TODO: add background expiry sweep to prevent unbounded memory growth
 
 // CreateSession generates a session ID, stores it server-side, and sets the session cookie on w.
 func CreateSession(w http.ResponseWriter, username string) {
@@ -34,6 +35,7 @@ func CreateSession(w http.ResponseWriter, username string) {
 
 	store.Store(id, sessionEntry{username: username, expires: time.Now().Add(sessionTTL)})
 
+	// TODO: set Secure: true in production (currently HTTP-only dev environment)
 	http.SetCookie(w, &http.Cookie{
 		Name:     cookieName,
 		Value:    id,
@@ -94,5 +96,20 @@ func RequireAuth(next http.Handler) http.Handler {
 
 		ctx := context.WithValue(r.Context(), CtxKeyUsername, entry.username)
 		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+// StoreTestSession inserts a session into the store for testing purposes.
+// Only exported for testing; not for production use.
+func StoreTestSession(id string, username string, expires time.Time) {
+	store.Store(id, sessionEntry{username: username, expires: expires})
+}
+
+// ResetStore clears all sessions from the store. Used in test cleanup to prevent
+// state leakage between tests.
+func ResetStore() {
+	store.Range(func(key, value interface{}) bool {
+		store.Delete(key)
+		return true
 	})
 }

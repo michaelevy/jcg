@@ -47,7 +47,9 @@ func main() {
 	mux.HandleFunc("GET /{$}", h.Home)
 
 	mux.HandleFunc("GET /login", h.LoginPage)
+	// TODO: add CSRF token protection before production deployment
 	mux.HandleFunc("POST /login", h.LoginSubmit)
+	// TODO: add CSRF token protection before production deployment
 	mux.HandleFunc("POST /logout", h.Logout)
 
 	// /enter is protected — placeholder until Phase 3 replaces it.
