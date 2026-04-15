@@ -1,0 +1,7 @@
+*.db
+*.db-wal
+*.db-shm
+/server
+/cmd/server/server
+.env
+.DS_Store
