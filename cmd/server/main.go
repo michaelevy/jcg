@@ -31,6 +31,7 @@ func main() {
 	}
 	defer database.Close()
 
+	// ParseFS loads templates: "head", "nav", "home" are reserved names; future templates must avoid naming collisions.
 	tmpl := template.Must(template.ParseFS(templateFS, "templates/*.html"))
 
 	staticSub, err := fs.Sub(staticFS, "static")

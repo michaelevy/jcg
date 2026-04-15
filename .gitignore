@@ -2,6 +2,7 @@
 *.db-wal
 *.db-shm
 /server
+/server.exe
 /cmd/server/server
 .env
 .DS_Store
