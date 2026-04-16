@@ -29,13 +29,13 @@ func (h *Handler) EntryPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.render(w, "entry", map[string]any{
-		"Title":             "Record Game Result",
-		"Username":          middleware.UsernameFromContext(r),
-		"Players":           players,
-		"Seasons":           seasons,
-		"Games":             games,
-		"Today":             time.Now().Format("2006-01-02"),
-		"SelectedSeasonID":  int64(0),
+		"Title":            "Record Game Result",
+		"Username":         middleware.UsernameFromContext(r),
+		"Players":          players,
+		"Seasons":          seasons,
+		"Games":            games,
+		"Today":            time.Now().Format("2006-01-02"),
+		"SelectedSeasonID": int64(0),
 	})
 }
 

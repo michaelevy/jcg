@@ -133,6 +133,66 @@ func TestEntrySubmit_OnlyOneScore_Returns400(t *testing.T) {
 	}
 }
 
+func TestEntrySubmit_NegativeScore_Returns400(t *testing.T) {
+	h := entryTestHandler(t)
+
+	form := url.Values{
+		"season_id":  {"1"},
+		"game_title": {"Wingspan"},
+		"played_at":  {"2026-04-12"},
+		"score_1":    {"-5"},
+		"score_2":    {"10"},
+	}
+	r := authenticatedRequest("POST", "/enter", form.Encode())
+	w := httptest.NewRecorder()
+
+	h.EntrySubmit(w, r)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("want 400, got %d", w.Code)
+	}
+}
+
+func TestEntrySubmit_WhitespaceGameTitle_Returns400(t *testing.T) {
+	h := entryTestHandler(t)
+
+	form := url.Values{
+		"season_id":  {"1"},
+		"game_title": {"   "},
+		"played_at":  {"2026-04-12"},
+		"score_1":    {"90"},
+		"score_2":    {"70"},
+	}
+	r := authenticatedRequest("POST", "/enter", form.Encode())
+	w := httptest.NewRecorder()
+
+	h.EntrySubmit(w, r)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("want 400, got %d", w.Code)
+	}
+}
+
+func TestEntrySubmit_MalformedScoreKey_Returns400(t *testing.T) {
+	h := entryTestHandler(t)
+
+	form := url.Values{
+		"season_id":  {"1"},
+		"game_title": {"Wingspan"},
+		"played_at":  {"2026-04-12"},
+		"score_abc":  {"10"},
+		"score_def":  {"20"},
+	}
+	r := authenticatedRequest("POST", "/enter", form.Encode())
+	w := httptest.NewRecorder()
+
+	h.EntrySubmit(w, r)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("want 400, got %d", w.Code)
+	}
+}
+
 func TestCreateSeason_CreatesSeasonAndReturnsOptions(t *testing.T) {
 	h := entryTestHandler(t)
 
