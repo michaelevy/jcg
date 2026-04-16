@@ -20,9 +20,15 @@ func entryTestHandler(t *testing.T) *Handler {
 	}
 	t.Cleanup(func() { database.Close() })
 
-	database.Exec(`INSERT INTO players (id, name) VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Carol'), (4, 'Dan')`)
-	database.Exec(`INSERT INTO seasons (id, name) VALUES (1, 'Season 1')`)
-	database.Exec(`INSERT INTO games (id, title) VALUES (1, 'Wingspan')`)
+	if _, err := database.Exec(`INSERT INTO players (id, name) VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Carol'), (4, 'Dan')`); err != nil {
+		t.Fatalf("seed players: %v", err)
+	}
+	if _, err := database.Exec(`INSERT INTO seasons (id, name) VALUES (1, 'Season 1')`); err != nil {
+		t.Fatalf("seed seasons: %v", err)
+	}
+	if _, err := database.Exec(`INSERT INTO games (id, title) VALUES (1, 'Wingspan')`); err != nil {
+		t.Fatalf("seed games: %v", err)
+	}
 
 	tmpl := template.Must(template.New("root").Parse(`
 		{{define "entry"}}ENTRY{{end}}

@@ -73,9 +73,15 @@ func TestInsertGameResult_PersistsData(t *testing.T) {
 	}
 	defer database.Close()
 
-	database.Exec(`INSERT INTO players (id, name) VALUES (1, 'Alice'), (2, 'Bob')`)
-	database.Exec(`INSERT INTO seasons (id, name) VALUES (1, 'Season 1')`)
-	database.Exec(`INSERT INTO games (id, title) VALUES (1, 'Wingspan')`)
+	if _, err := database.Exec(`INSERT INTO players (id, name) VALUES (1, 'Alice'), (2, 'Bob')`); err != nil {
+		t.Fatalf("seed players: %v", err)
+	}
+	if _, err := database.Exec(`INSERT INTO seasons (id, name) VALUES (1, 'Season 1')`); err != nil {
+		t.Fatalf("seed seasons: %v", err)
+	}
+	if _, err := database.Exec(`INSERT INTO games (id, title) VALUES (1, 'Wingspan')`); err != nil {
+		t.Fatalf("seed games: %v", err)
+	}
 
 	scores := []PlayerScore{
 		{PlayerID: 1, Score: 90, Placement: 1, SeasonPoints: 3},

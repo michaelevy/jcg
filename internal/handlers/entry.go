@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"jcg/internal/db"
@@ -28,12 +29,13 @@ func (h *Handler) EntryPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.render(w, "entry", map[string]any{
-		"Title":    "Record Game Result",
-		"Username": middleware.UsernameFromContext(r),
-		"Players":  players,
-		"Seasons":  seasons,
-		"Games":    games,
-		"Today":    time.Now().Format("2006-01-02"),
+		"Title":             "Record Game Result",
+		"Username":          middleware.UsernameFromContext(r),
+		"Players":           players,
+		"Seasons":           seasons,
+		"Games":             games,
+		"Today":             time.Now().Format("2006-01-02"),
+		"SelectedSeasonID":  int64(0),
 	})
 }
 
@@ -44,7 +46,7 @@ func (h *Handler) EntrySubmit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	seasonIDStr := r.FormValue("season_id")
-	gameTitle := r.FormValue("game_title")
+	gameTitle := strings.TrimSpace(r.FormValue("game_title"))
 	playedAt := r.FormValue("played_at")
 
 	if seasonIDStr == "" || gameTitle == "" || playedAt == "" {
@@ -67,11 +69,20 @@ func (h *Handler) EntrySubmit(w http.ResponseWriter, r *http.Request) {
 	// Parse per-player scores from form fields named "score_<playerID>".
 	rawScores := map[int64]int{}
 	for key, vals := range r.Form {
-		var playerID int64
-		if n, _ := fmt.Sscanf(key, "score_%d", &playerID); n == 1 && len(vals) > 0 && vals[0] != "" {
+		if strings.HasPrefix(key, "score_") && len(vals) > 0 && vals[0] != "" {
+			playerIDStr := key[6:] // Extract portion after "score_"
+			playerID, err := strconv.ParseInt(playerIDStr, 10, 64)
+			if err != nil {
+				http.Error(w, fmt.Sprintf("invalid player ID in %s", key), http.StatusBadRequest)
+				return
+			}
 			score, err := strconv.Atoi(vals[0])
 			if err != nil {
 				http.Error(w, fmt.Sprintf("invalid score for player %d", playerID), http.StatusBadRequest)
+				return
+			}
+			if score < 0 {
+				http.Error(w, fmt.Sprintf("score for player %d cannot be negative", playerID), http.StatusBadRequest)
 				return
 			}
 			rawScores[playerID] = score
