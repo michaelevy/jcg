@@ -181,3 +181,66 @@ func TestCurrentSeasonID_ReturnsLatestOrZero(t *testing.T) {
 		t.Errorf("want 2 (latest), got %d", id)
 	}
 }
+
+func TestLeaderboard_MultiSeasonIsolation_RegressionTest(t *testing.T) {
+	database, err := Open("file::memory:?cache=shared&_foreign_keys=on")
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	defer database.Close()
+
+	// Setup: 2 seasons, 2 players, 2 games (one per season)
+	database.Exec(`INSERT INTO players (id, name) VALUES (1, 'Player1'), (2, 'Player2')`)
+	database.Exec(`INSERT INTO seasons (id, name) VALUES (1, 'Season 1'), (2, 'Season 2')`)
+	database.Exec(`INSERT INTO games (id, title) VALUES (1, 'Game1'), (2, 'Game2')`)
+
+	// Season 1: Player 1 wins with 3 points
+	database.Exec(`INSERT INTO game_results (id, season_id, game_id, played_at) VALUES (1, 1, 1, '2026-04-01')`)
+	database.Exec(`INSERT INTO player_scores (result_id, player_id, score, placement, season_points)
+		VALUES (1, 1, 100, 1, 3), (1, 2, 50, 2, 2)`)
+
+	// Season 2: Player 2 wins with 3 points
+	database.Exec(`INSERT INTO game_results (id, season_id, game_id, played_at) VALUES (2, 2, 2, '2026-04-02')`)
+	database.Exec(`INSERT INTO player_scores (result_id, player_id, score, placement, season_points)
+		VALUES (2, 2, 100, 1, 3), (2, 1, 50, 2, 2)`)
+
+	// Test Season 1 leaderboard: Player 1 has 3 points, Player 2 has 2 points
+	rows1, err := Leaderboard(database, 1)
+	if err != nil {
+		t.Fatalf("Leaderboard(season 1): %v", err)
+	}
+
+	if len(rows1) != 2 {
+		t.Fatalf("Season 1: want 2 rows, got %d", len(rows1))
+	}
+
+	// Season 1 leaderboard should be ranked: Player 1 (3pts), Player 2 (2pts)
+	if rows1[0].PlayerName != "Player1" || rows1[0].TotalPoints != 3 {
+		t.Errorf("Season 1, 1st place: want Player1 with 3 points, got %s with %d points",
+			rows1[0].PlayerName, rows1[0].TotalPoints)
+	}
+	if rows1[1].PlayerName != "Player2" || rows1[1].TotalPoints != 2 {
+		t.Errorf("Season 1, 2nd place: want Player2 with 2 points, got %s with %d points",
+			rows1[1].PlayerName, rows1[1].TotalPoints)
+	}
+
+	// Test Season 2 leaderboard: Player 2 has 3 points, Player 1 has 2 points
+	rows2, err := Leaderboard(database, 2)
+	if err != nil {
+		t.Fatalf("Leaderboard(season 2): %v", err)
+	}
+
+	if len(rows2) != 2 {
+		t.Fatalf("Season 2: want 2 rows, got %d", len(rows2))
+	}
+
+	// Season 2 leaderboard should be ranked: Player 2 (3pts), Player 1 (2pts)
+	if rows2[0].PlayerName != "Player2" || rows2[0].TotalPoints != 3 {
+		t.Errorf("Season 2, 1st place: want Player2 with 3 points, got %s with %d points",
+			rows2[0].PlayerName, rows2[0].TotalPoints)
+	}
+	if rows2[1].PlayerName != "Player1" || rows2[1].TotalPoints != 2 {
+		t.Errorf("Season 2, 2nd place: want Player1 with 2 points, got %s with %d points",
+			rows2[1].PlayerName, rows2[1].TotalPoints)
+	}
+}

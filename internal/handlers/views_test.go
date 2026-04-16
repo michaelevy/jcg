@@ -121,3 +121,35 @@ func TestLeaderboard_NoSeasons_ReturnsOK(t *testing.T) {
 		t.Errorf("want 200 even with no seasons, got %d", w.Code)
 	}
 }
+
+func TestLeaderboard_InvalidSeasonParam_Returns400(t *testing.T) {
+	h := leaderboardTestHandler(t)
+
+	r := httptest.NewRequest("GET", "/?season=foo", nil)
+	w := httptest.NewRecorder()
+
+	h.Leaderboard(w, r)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("want 400 for invalid season param, got %d", w.Code)
+	}
+	if !strings.Contains(w.Body.String(), "invalid season") {
+		t.Errorf("want error message containing 'invalid season', got: %s", w.Body.String())
+	}
+}
+
+func TestLeaderboard_NegativeSeasonParam_Returns400(t *testing.T) {
+	h := leaderboardTestHandler(t)
+
+	r := httptest.NewRequest("GET", "/?season=-1", nil)
+	w := httptest.NewRecorder()
+
+	h.Leaderboard(w, r)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("want 400 for negative season param, got %d", w.Code)
+	}
+	if !strings.Contains(w.Body.String(), "invalid season") {
+		t.Errorf("want error message containing 'invalid season', got: %s", w.Body.String())
+	}
+}
