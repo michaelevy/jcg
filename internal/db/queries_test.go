@@ -102,3 +102,82 @@ func TestInsertGameResult_PersistsData(t *testing.T) {
 		t.Errorf("want 2 player_scores rows, got %d", scoreCount)
 	}
 }
+
+func TestLeaderboard_RanksPlayers(t *testing.T) {
+	database, err := Open("file::memory:?cache=shared&_foreign_keys=on")
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	defer database.Close()
+
+	database.Exec(`INSERT INTO players (id, name) VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Carol')`)
+	database.Exec(`INSERT INTO seasons (id, name) VALUES (1, 'Season 1')`)
+	database.Exec(`INSERT INTO games (id, title) VALUES (1, 'Wingspan')`)
+	// Alice wins (3pts), Bob 2nd (2pts), Carol 3rd (1pt).
+	database.Exec(`INSERT INTO game_results (id, season_id, game_id, played_at) VALUES (1, 1, 1, '2026-04-12')`)
+	database.Exec(`INSERT INTO player_scores (result_id, player_id, score, placement, season_points)
+		VALUES (1, 1, 100, 1, 3), (1, 2, 80, 2, 2), (1, 3, 60, 3, 1)`)
+
+	rows, err := Leaderboard(database, 1)
+	if err != nil {
+		t.Fatalf("Leaderboard: %v", err)
+	}
+
+	if len(rows) != 3 {
+		t.Fatalf("want 3 rows, got %d", len(rows))
+	}
+	if rows[0].PlayerName != "Alice" || rows[0].TotalPoints != 3 || rows[0].Wins != 1 {
+		t.Errorf("1st place: want Alice 3pts 1win, got %+v", rows[0])
+	}
+	if rows[1].PlayerName != "Bob" || rows[1].TotalPoints != 2 || rows[1].Wins != 0 {
+		t.Errorf("2nd place: want Bob 2pts 0wins, got %+v", rows[1])
+	}
+}
+
+func TestLeaderboard_PlayersWithNoResults_AppearWithZeros(t *testing.T) {
+	database, err := Open("file::memory:?cache=shared&_foreign_keys=on")
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	defer database.Close()
+
+	database.Exec(`INSERT INTO players (id, name) VALUES (1, 'Alice'), (2, 'Bob')`)
+	database.Exec(`INSERT INTO seasons (id, name) VALUES (1, 'Season 1')`)
+	// No game results.
+
+	rows, err := Leaderboard(database, 1)
+	if err != nil {
+		t.Fatalf("Leaderboard: %v", err)
+	}
+
+	if len(rows) != 2 {
+		t.Fatalf("want 2 rows (all players appear), got %d", len(rows))
+	}
+	for _, r := range rows {
+		if r.TotalPoints != 0 || r.GamesPlayed != 0 {
+			t.Errorf("player with no results should have zero stats, got %+v", r)
+		}
+	}
+}
+
+func TestCurrentSeasonID_ReturnsLatestOrZero(t *testing.T) {
+	database, err := Open("file::memory:?cache=shared&_foreign_keys=on")
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	defer database.Close()
+
+	id, err := CurrentSeasonID(database)
+	if err != nil {
+		t.Fatalf("CurrentSeasonID: %v", err)
+	}
+	if id != 0 {
+		t.Errorf("want 0 when no seasons, got %d", id)
+	}
+
+	database.Exec(`INSERT INTO seasons (id, name) VALUES (1, 'S1'), (2, 'S2')`)
+	id, _ = CurrentSeasonID(database)
+	if id != 2 {
+		t.Errorf("want 2 (latest), got %d", id)
+	}
+}

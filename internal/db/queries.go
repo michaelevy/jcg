@@ -161,6 +161,68 @@ func seasonPoints(placement int) int {
 	}
 }
 
+// LeaderboardRow is one player's aggregated stats for a season.
+type LeaderboardRow struct {
+	PlayerID    int64
+	PlayerName  string
+	GamesPlayed int
+	Wins        int
+	TotalPoints int
+}
+
+// CurrentSeasonID returns the ID of the most recently created season,
+// or 0 if no seasons exist.
+func CurrentSeasonID(db *sql.DB) (int64, error) {
+	var id int64
+	err := db.QueryRow(`SELECT COALESCE(MAX(id), 0) FROM seasons`).Scan(&id)
+	return id, err
+}
+
+// GetSeason returns a single season by ID.
+func GetSeason(db *sql.DB, id int64) (Season, error) {
+	var s Season
+	err := db.QueryRow(`SELECT id, name, start_date, end_date FROM seasons WHERE id = ?`, id).
+		Scan(&s.ID, &s.Name, &s.StartDate, &s.EndDate)
+	return s, err
+}
+
+// Leaderboard returns all players ranked by season points for the given season.
+// Players with no results in the season appear with zero stats.
+func Leaderboard(db *sql.DB, seasonID int64) ([]LeaderboardRow, error) {
+	const q = `
+		SELECT
+			p.id,
+			p.name,
+			COUNT(ps.id)                                             AS games_played,
+			COALESCE(SUM(CASE WHEN ps.placement = 1 THEN 1 END), 0) AS wins,
+			COALESCE(SUM(ps.season_points), 0)                       AS total_points
+		FROM players p
+		LEFT JOIN (
+			SELECT ps.*
+			FROM player_scores ps
+			JOIN game_results gr ON gr.id = ps.result_id
+			WHERE gr.season_id = ?
+		) ps ON ps.player_id = p.id
+		GROUP BY p.id, p.name
+		ORDER BY total_points DESC, wins DESC, p.name ASC
+	`
+	rows, err := db.Query(q, seasonID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []LeaderboardRow
+	for rows.Next() {
+		var r LeaderboardRow
+		if err := rows.Scan(&r.PlayerID, &r.PlayerName, &r.GamesPlayed, &r.Wins, &r.TotalPoints); err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}
+
 // InsertGameResult writes a game_result row and its player_scores in a transaction.
 func InsertGameResult(db *sql.DB, seasonID, gameID int64, playedAt string, scores []PlayerScore) error {
 	tx, err := db.Begin()
