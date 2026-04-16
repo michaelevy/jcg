@@ -1,0 +1,71 @@
+{{define "leaderboard"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>{{template "head" .}}</head>
+<body>
+  {{template "nav" .}}
+  <main>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+      <h1>
+        {{if .CurrentSeason.Name}}{{.CurrentSeason.Name}}{{else}}Leaderboard{{end}}
+      </h1>
+
+      {{if .Seasons}}
+      <select id="season-selector"
+              hx-get="/"
+              hx-target="#leaderboard-section"
+              hx-swap="innerHTML"
+              hx-include="#season-selector"
+              name="season"
+              style="padding: 0.4rem 0.6rem; border: 1px solid #ccc; border-radius: 4px;">
+        {{range .Seasons}}
+        <option value="{{.ID}}" {{if eq .ID $.SeasonID}}selected{{end}}>{{.Name}}</option>
+        {{end}}
+      </select>
+      {{end}}
+    </div>
+
+    {{if .Username}}
+    <p style="margin-bottom: 1.5rem;">
+      <a href="/enter">Record a game result</a>
+    </p>
+    {{end}}
+
+    <div id="leaderboard-section">
+      {{template "leaderboard-table" .}}
+    </div>
+  </main>
+</body>
+</html>
+{{end}}
+
+{{define "leaderboard-table"}}
+{{if not .Rows}}
+  <p>No results yet for this season.
+    {{if .Username}}<a href="/enter">Record the first game</a>.{{end}}
+  </p>
+{{else}}
+<table>
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Player</th>
+      <th>Points</th>
+      <th>Wins</th>
+      <th>Games</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{range $i, $r := .Rows}}
+    <tr>
+      <td>{{add $i 1}}</td>
+      <td>{{$r.PlayerName}}</td>
+      <td><strong>{{$r.TotalPoints}}</strong></td>
+      <td>{{$r.Wins}}</td>
+      <td>{{$r.GamesPlayed}}</td>
+    </tr>
+    {{end}}
+  </tbody>
+</table>
+{{end}}
+{{end}}

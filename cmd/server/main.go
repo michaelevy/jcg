@@ -32,8 +32,12 @@ func main() {
 	}
 	defer database.Close()
 
-	// ParseFS loads templates: "head", "nav", "home" are reserved names; future templates must avoid naming collisions.
-	tmpl := template.Must(template.ParseFS(templateFS, "templates/*.html"))
+	// ParseFS loads templates: "head", "nav", "leaderboard" are reserved names; future templates must avoid naming collisions.
+	tmpl := template.Must(
+		template.New("").Funcs(template.FuncMap{
+			"add": func(a, b int) int { return a + b },
+		}).ParseFS(templateFS, "templates/*.html"),
+	)
 
 	staticSub, err := fs.Sub(staticFS, "static")
 	if err != nil {
@@ -44,7 +48,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticSub))))
-	mux.HandleFunc("GET /{$}", h.Home)
+	mux.HandleFunc("GET /{$}", h.Leaderboard)
 
 	mux.HandleFunc("GET /login", h.LoginPage)
 	// TODO: add CSRF token protection before production deployment

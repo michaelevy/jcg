@@ -5,8 +5,6 @@ import (
 	"html/template"
 	"log"
 	"net/http"
-
-	"jcg/internal/middleware"
 )
 
 // Handler holds shared dependencies for all HTTP handlers.
@@ -24,12 +22,4 @@ func (h *Handler) render(w http.ResponseWriter, name string, data any) {
 		log.Printf("template %q: %v", name, err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 	}
-}
-
-// Home is a placeholder until the leaderboard is built in Phase 4.
-func (h *Handler) Home(w http.ResponseWriter, r *http.Request) {
-	h.render(w, "home", map[string]any{
-		"Title":    "Home",
-		"Username": middleware.UsernameFromContext(r),
-	})
 }
