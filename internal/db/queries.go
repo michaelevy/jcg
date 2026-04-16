@@ -197,12 +197,8 @@ func Leaderboard(db *sql.DB, seasonID int64) ([]LeaderboardRow, error) {
 			COALESCE(SUM(CASE WHEN ps.placement = 1 THEN 1 END), 0) AS wins,
 			COALESCE(SUM(ps.season_points), 0)                       AS total_points
 		FROM players p
-		LEFT JOIN (
-			SELECT ps.*
-			FROM player_scores ps
-			JOIN game_results gr ON gr.id = ps.result_id
-			WHERE gr.season_id = ?
-		) ps ON ps.player_id = p.id
+		LEFT JOIN player_scores ps ON ps.player_id = p.id
+		LEFT JOIN game_results gr ON gr.id = ps.result_id AND gr.season_id = ?
 		GROUP BY p.id, p.name
 		ORDER BY total_points DESC, wins DESC, p.name ASC
 	`

@@ -11,7 +11,12 @@ import (
 func (h *Handler) Leaderboard(w http.ResponseWriter, r *http.Request) {
 	var seasonID int64
 	if raw := r.URL.Query().Get("season"); raw != "" {
-		seasonID, _ = strconv.ParseInt(raw, 10, 64)
+		parsed, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil || parsed <= 0 {
+			http.Error(w, "invalid season", http.StatusBadRequest)
+			return
+		}
+		seasonID = parsed
 	}
 	if seasonID == 0 {
 		var err error
