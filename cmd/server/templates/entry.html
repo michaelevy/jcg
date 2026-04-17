@@ -10,7 +10,11 @@
     <form method="POST" action="/enter" class="form-narrow">
 
       <label for="season_id">Season</label>
-      <select id="season_id" name="season_id" required>
+      <select id="season_id" name="season_id" required
+              hx-get="/enter/next-game-number"
+              hx-target="#game_number"
+              hx-swap="outerHTML"
+              hx-trigger="change">
         <option value="">— select —</option>
         {{template "season-options" .}}
       </select>
@@ -29,7 +33,7 @@
       </details>
 
       <label for="game_number">Game #</label>
-      <input id="game_number" name="game_number" type="number" min="1" step="1" required placeholder="e.g. 7">
+      {{template "game-number-input" .}}
 
       <label for="game_title">Game</label>
       <input id="game_title" name="game_title" list="games-list" type="text" required placeholder="Start typing...">
@@ -53,6 +57,11 @@
   </main>
 </body>
 </html>
+{{end}}
+
+{{define "game-number-input"}}
+<input id="game_number" name="game_number" type="number" min="1" step="1" required
+       placeholder="e.g. 7" {{if .NextGameNumber}}value="{{.NextGameNumber}}"{{end}}>
 {{end}}
 
 {{define "season-options"}}

@@ -64,6 +64,7 @@ func main() {
 
 	mux.Handle("GET /enter", middleware.RequireAuth(http.HandlerFunc(h.EntryPage)))
 	mux.Handle("POST /enter", middleware.RequireAuth(http.HandlerFunc(h.EntrySubmit)))
+	mux.Handle("GET /enter/next-game-number", middleware.RequireAuth(http.HandlerFunc(h.NextGameNumber)))
 	mux.Handle("POST /enter/season", middleware.RequireAuth(http.HandlerFunc(h.CreateSeason)))
 
 	log.Printf("listening on %s", *addr)

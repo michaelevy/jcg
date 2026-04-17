@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(go get:*)",
+      "Bash(go build:*)",
+      "Bash(go run:*)",
+      "Bash(sqlite3:*)",
+      "Bash(go test:*)",
+      "Bash(go vet:*)",
+      "Bash(gofmt -l .)",
+      "Bash(curl -s http://localhost:8080/)"
+    ]
+  }
+}

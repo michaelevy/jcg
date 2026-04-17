@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -97,11 +98,34 @@ func (h *Handler) EntrySubmit(w http.ResponseWriter, r *http.Request) {
 	scored := db.PlacementsToScores(placements)
 
 	if err := db.InsertGameResult(h.db, seasonID, gameID, gameNumber, scored); err != nil {
+		if errors.Is(err, db.ErrDuplicateGameNumber) {
+			http.Error(w, fmt.Sprintf("game #%d already exists for this season", gameNumber), http.StatusBadRequest)
+			return
+		}
 		http.Error(w, "db error", http.StatusInternalServerError)
 		return
 	}
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+// NextGameNumber handles the HTMX request to auto-fill the game number field
+// when a season is selected. Returns the game-number-input template fragment.
+func (h *Handler) NextGameNumber(w http.ResponseWriter, r *http.Request) {
+	seasonIDStr := r.URL.Query().Get("season_id")
+	seasonID, err := strconv.ParseInt(seasonIDStr, 10, 64)
+	if err != nil || seasonID <= 0 {
+		h.render(w, "game-number-input", map[string]any{"NextGameNumber": 0})
+		return
+	}
+
+	next, err := db.NextGameNumber(h.db, seasonID)
+	if err != nil {
+		http.Error(w, "db error", http.StatusInternalServerError)
+		return
+	}
+
+	h.render(w, "game-number-input", map[string]any{"NextGameNumber": next})
 }
 
 // CreateSeason handles the HTMX inline season-creation sub-form.

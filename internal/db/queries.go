@@ -2,9 +2,15 @@ package db
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
+	"strings"
 	"time"
 )
+
+// ErrDuplicateGameNumber is returned by InsertGameResult when the game_number
+// is already taken for that season.
+var ErrDuplicateGameNumber = errors.New("game number already used in this season")
 
 // --- Data types ---
 
@@ -97,6 +103,16 @@ func CreateSeason(db *sql.DB, name string) (int64, error) {
 		return 0, err
 	}
 	return res.LastInsertId()
+}
+
+// NextGameNumber returns the next available game_number for a season (max + 1, or 1 if none yet).
+func NextGameNumber(db *sql.DB, seasonID int64) (int, error) {
+	var next int
+	err := db.QueryRow(
+		`SELECT COALESCE(MAX(game_number), 0) + 1 FROM game_results WHERE season_id = ?`,
+		seasonID,
+	).Scan(&next)
+	return next, err
 }
 
 // CreateGame inserts a new game title if it doesn't exist, returning its ID either way.
@@ -214,6 +230,9 @@ func InsertGameResult(db *sql.DB, seasonID, gameID int64, gameNumber int, scores
 		seasonID, gameID, gameNumber,
 	)
 	if err != nil {
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+			return ErrDuplicateGameNumber
+		}
 		return fmt.Errorf("insert game_result: %w", err)
 	}
 	resultID, _ := res.LastInsertId()
