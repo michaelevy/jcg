@@ -24,7 +24,7 @@ func leaderboardTestHandler(t *testing.T) *Handler {
 	database.Exec(`INSERT INTO games (id, title) VALUES (1, 'Wingspan')`)
 	database.Exec(`INSERT INTO game_results (id, season_id, game_id, played_at) VALUES (1, 1, 1, '2026-04-12')`)
 	database.Exec(`INSERT INTO player_scores (result_id, player_id, score, placement, season_points)
-		VALUES (1, 1, 100, 1, 3), (1, 2, 80, 2, 2)`)
+		VALUES (1, 1, 100, 1, 4), (1, 2, 80, 2, 2)`)
 
 	tmpl := template.Must(
 		template.New("").Funcs(template.FuncMap{
@@ -52,8 +52,8 @@ func TestLeaderboard_FullPageRender(t *testing.T) {
 	if !strings.HasPrefix(body, "FULL:") {
 		t.Errorf("want full-page template, got: %s", body)
 	}
-	if !strings.Contains(body, "Alice=3") {
-		t.Errorf("want Alice with 3 points, got: %s", body)
+	if !strings.Contains(body, "Alice=4") {
+		t.Errorf("want Alice with 4 points, got: %s", body)
 	}
 }
 

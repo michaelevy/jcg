@@ -31,7 +31,7 @@ type PlayerScore struct {
 	PlayerID     int64
 	Score        int
 	Placement    int // 1 = winner
-	SeasonPoints int // 3/2/1/0 for placements 1/2/3/4+
+	SeasonPoints int // 4/2/1/0 for placements 1/2/3/4+
 }
 
 // --- List helpers ---
@@ -116,8 +116,8 @@ func CreateGame(db *sql.DB, title string) (int64, error) {
 
 // ComputePlacements ranks scores highest-first and assigns placements (1-indexed).
 // Ties share the same placement (e.g. two players tied for 1st both get placement 1
-// and both receive 3 season points — the position below them is skipped accordingly).
-// SeasonPoints: 3/2/1/0 for placements 1/2/3/4+.
+// and both receive 4 season points — the position below them is skipped accordingly).
+// SeasonPoints: 4/2/1/0 for placements 1/2/3/4+.
 func ComputePlacements(scores map[int64]int) []PlayerScore {
 	type pair struct {
 		playerID int64
@@ -151,7 +151,7 @@ func ComputePlacements(scores map[int64]int) []PlayerScore {
 func seasonPoints(placement int) int {
 	switch placement {
 	case 1:
-		return 3
+		return 4
 	case 2:
 		return 2
 	case 3:

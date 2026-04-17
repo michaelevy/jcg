@@ -17,7 +17,7 @@ Single source of truth for SQLite schema and all data access. Keeps SQL out of h
 ## Key Decisions
 - Package-level functions (not receiver methods on a DB wrapper): keeps it simple, db passed explicitly
 - `CreateGame` uses INSERT OR IGNORE + SELECT: upsert pattern for game titles
-- Placement scoring is 3/2/1/0; ties share placement and both receive the higher tier's points
+- Placement scoring is 4/2/1/0; ties share placement and both receive the higher tier's points
 
 ## Invariants
 - player_scores has UNIQUE(result_id, player_id): one score per player per game result
