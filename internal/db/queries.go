@@ -318,3 +318,94 @@ func SeasonHistory(db *sql.DB, seasonID int64) ([]GameSummary, error) {
 	}
 	return summaries, rows.Err()
 }
+
+// GetPlayer returns a single player by ID.
+func GetPlayer(db *sql.DB, id int64) (Player, error) {
+	var p Player
+	err := db.QueryRow(`SELECT id, name FROM players WHERE id = ?`, id).Scan(&p.ID, &p.Name)
+	return p, err
+}
+
+// PlayerSeasonStat summarises a player's performance in one season.
+type PlayerSeasonStat struct {
+	SeasonID    int64
+	SeasonName  string
+	GamesPlayed int
+	TotalPoints int
+	Wins        int
+}
+
+// PlayerSeasonStats returns per-season aggregates for a player, newest season first.
+func PlayerSeasonStats(db *sql.DB, playerID int64) ([]PlayerSeasonStat, error) {
+	const q = `
+		SELECT
+			s.id, s.name,
+			COUNT(ps.id)                                              AS games_played,
+			COALESCE(SUM(ps.season_points), 0)                        AS total_points,
+			COALESCE(SUM(CASE WHEN ps.placement = 1 THEN 1 ELSE 0 END), 0) AS wins
+		FROM player_scores ps
+		JOIN game_results gr ON gr.id = ps.result_id
+		JOIN seasons s ON s.id = gr.season_id
+		WHERE ps.player_id = ?
+		GROUP BY s.id
+		ORDER BY s.id DESC
+	`
+	rows, err := db.Query(q, playerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []PlayerSeasonStat
+	for rows.Next() {
+		var r PlayerSeasonStat
+		if err := rows.Scan(&r.SeasonID, &r.SeasonName, &r.GamesPlayed, &r.TotalPoints, &r.Wins); err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}
+
+// PlayerGameRow is one game entry in a player's cross-season history.
+type PlayerGameRow struct {
+	ResultID   int64
+	GameNumber int
+	GameID     int64
+	GameTitle  string
+	SeasonID   int64
+	SeasonName string
+	Placement  int
+	Points     int
+}
+
+// PlayerGameHistory returns all games a player has participated in, newest first.
+func PlayerGameHistory(db *sql.DB, playerID int64) ([]PlayerGameRow, error) {
+	const q = `
+		SELECT
+			gr.id, gr.game_number, g.id, g.title,
+			s.id, s.name, ps.placement, ps.season_points
+		FROM player_scores ps
+		JOIN game_results gr ON gr.id = ps.result_id
+		JOIN games g ON g.id = gr.game_id
+		JOIN seasons s ON s.id = gr.season_id
+		WHERE ps.player_id = ?
+		ORDER BY s.id DESC, gr.game_number DESC
+	`
+	rows, err := db.Query(q, playerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []PlayerGameRow
+	for rows.Next() {
+		var r PlayerGameRow
+		if err := rows.Scan(&r.ResultID, &r.GameNumber, &r.GameID, &r.GameTitle,
+			&r.SeasonID, &r.SeasonName, &r.Placement, &r.Points); err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}

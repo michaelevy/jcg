@@ -296,3 +296,101 @@ func TestSeasonHistory_EmptySeason_ReturnsEmpty(t *testing.T) {
 		t.Errorf("want 0 summaries for empty season, got %d", len(summaries))
 	}
 }
+
+func TestGetPlayer_ReturnsPlayer(t *testing.T) {
+	database, err := Open("file::memory:?cache=shared&_foreign_keys=on")
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	defer database.Close()
+
+	database.Exec(`INSERT INTO players (id, name) VALUES (1, 'Alice')`)
+
+	p, err := GetPlayer(database, 1)
+	if err != nil {
+		t.Fatalf("GetPlayer: %v", err)
+	}
+	if p.ID != 1 || p.Name != "Alice" {
+		t.Errorf("want {1, Alice}, got {%d, %q}", p.ID, p.Name)
+	}
+}
+
+func TestGetPlayer_NotFound_ReturnsError(t *testing.T) {
+	database, err := Open("file::memory:?cache=shared&_foreign_keys=on")
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	defer database.Close()
+
+	_, err = GetPlayer(database, 99)
+	if err == nil {
+		t.Error("want error for missing player, got nil")
+	}
+}
+
+func TestPlayerSeasonStats_ReturnsSummaryPerSeason(t *testing.T) {
+	database, err := Open("file::memory:?cache=shared&_foreign_keys=on")
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	defer database.Close()
+
+	database.Exec(`INSERT INTO players (id, name) VALUES (1, 'Alice'), (2, 'Bob')`)
+	database.Exec(`INSERT INTO seasons (id, name) VALUES (1, 'S1'), (2, 'S2')`)
+	database.Exec(`INSERT INTO games (id, title) VALUES (1, 'Wingspan')`)
+	// S1: Alice wins game 1, Bob second
+	database.Exec(`INSERT INTO game_results (id, season_id, game_id, game_number) VALUES (1, 1, 1, 1)`)
+	database.Exec(`INSERT INTO player_scores (result_id, player_id, placement, season_points)
+		VALUES (1, 1, 1, 4), (1, 2, 2, 2)`)
+	// S2: Alice second, Bob wins
+	database.Exec(`INSERT INTO game_results (id, season_id, game_id, game_number) VALUES (2, 2, 1, 1)`)
+	database.Exec(`INSERT INTO player_scores (result_id, player_id, placement, season_points)
+		VALUES (2, 1, 2, 2), (2, 2, 1, 4)`)
+
+	stats, err := PlayerSeasonStats(database, 1) // Alice's stats
+	if err != nil {
+		t.Fatalf("PlayerSeasonStats: %v", err)
+	}
+	if len(stats) != 2 {
+		t.Fatalf("want 2 season stats, got %d", len(stats))
+	}
+	// Results ordered by season id DESC, so S2 first
+	if stats[0].SeasonName != "S2" || stats[0].TotalPoints != 2 || stats[0].Wins != 0 {
+		t.Errorf("S2 stats: want {S2, 2pts, 0 wins}, got {%s, %d, %d}",
+			stats[0].SeasonName, stats[0].TotalPoints, stats[0].Wins)
+	}
+	if stats[1].SeasonName != "S1" || stats[1].TotalPoints != 4 || stats[1].Wins != 1 {
+		t.Errorf("S1 stats: want {S1, 4pts, 1 win}, got {%s, %d, %d}",
+			stats[1].SeasonName, stats[1].TotalPoints, stats[1].Wins)
+	}
+}
+
+func TestPlayerGameHistory_ReturnsAllGamesAcrossSeasons(t *testing.T) {
+	database, err := Open("file::memory:?cache=shared&_foreign_keys=on")
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	defer database.Close()
+
+	database.Exec(`INSERT INTO players (id, name) VALUES (1, 'Alice'), (2, 'Bob')`)
+	database.Exec(`INSERT INTO seasons (id, name) VALUES (1, 'S1'), (2, 'S2')`)
+	database.Exec(`INSERT INTO games (id, title) VALUES (1, 'Wingspan')`)
+	database.Exec(`INSERT INTO game_results (id, season_id, game_id, game_number) VALUES (1, 1, 1, 1), (2, 2, 1, 1)`)
+	database.Exec(`INSERT INTO player_scores (result_id, player_id, placement, season_points)
+		VALUES (1, 1, 1, 4), (1, 2, 2, 2), (2, 1, 2, 2), (2, 2, 1, 4)`)
+
+	rows, err := PlayerGameHistory(database, 1) // Alice
+	if err != nil {
+		t.Fatalf("PlayerGameHistory: %v", err)
+	}
+	if len(rows) != 2 {
+		t.Fatalf("want 2 game rows, got %d", len(rows))
+	}
+	// Ordered season DESC, game_number DESC — S2 game first
+	if rows[0].SeasonName != "S2" || rows[0].Placement != 2 {
+		t.Errorf("first row: want S2 placement 2, got %s placement %d", rows[0].SeasonName, rows[0].Placement)
+	}
+	if rows[1].SeasonName != "S1" || rows[1].Placement != 1 {
+		t.Errorf("second row: want S1 placement 1, got %s placement %d", rows[1].SeasonName, rows[1].Placement)
+	}
+}
