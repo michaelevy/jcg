@@ -39,7 +39,9 @@
 {{range .Games}}
 <div style="border: 1px solid #ddd; border-radius: 4px; padding: 1rem; margin-bottom: 1rem;">
   <h3 style="margin: 0 0 0.5rem 0;">
-    Game {{.GameNumber}}: <a href="/game-results/{{.ResultID}}">{{.Title}}</a>
+    Game {{.GameNumber}}:
+    <!-- Link will be live after Phase 3 (game detail view) -->
+    <a href="/game-results/{{.ResultID}}">{{.Title}}</a>
   </h3>
   <table>
     <thead>
@@ -49,6 +51,7 @@
       {{range .Placements}}
       <tr>
         <td>{{.Placement}}</td>
+        <!-- Link will be live after Phase 2 (player detail view) -->
         <td><a href="/players/{{.PlayerID}}">{{.PlayerName}}</a></td>
         <td>{{.Points}}</td>
       </tr>

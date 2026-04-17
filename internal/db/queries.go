@@ -262,7 +262,7 @@ type PlacementRow struct {
 type GameSummary struct {
 	ResultID   int64
 	GameNumber int
-	GameID     int64
+	GameID     int64 // Used by game detail view (Phase 3)
 	Title      string
 	Placements []PlacementRow
 }
