@@ -1,13 +1,17 @@
 package main
 
 import (
+	"database/sql"
 	"embed"
 	"flag"
 	"html/template"
 	"io/fs"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 
+	"golang.org/x/crypto/bcrypt"
 	"jcg/internal/db"
 	"jcg/internal/handlers"
 	"jcg/internal/middleware"
@@ -31,6 +35,8 @@ func main() {
 		log.Fatalf("open db: %v", err)
 	}
 	defer database.Close()
+
+	applySeed(database)
 
 	// ParseFS loads templates: "head", "nav", "leaderboard" are reserved names; future templates must avoid naming collisions.
 	tmpl := template.Must(
@@ -65,3 +71,45 @@ func main() {
 		log.Fatal(err)
 	}
 }
+
+// applySeed reads JCG_SEED_PLAYERS and JCG_SEED_USERS env vars and idempotently
+// creates any listed players and users that don't already exist.
+//
+//	JCG_SEED_PLAYERS=Alice,Bob,Carol
+//	JCG_SEED_USERS=admin:password,viewer:pass2
+func applySeed(database *sql.DB) {
+	if players := os.Getenv("JCG_SEED_PLAYERS"); players != "" {
+		for _, name := range strings.Split(players, ",") {
+			name = strings.TrimSpace(name)
+			if name == "" {
+				continue
+			}
+			if _, err := database.Exec(`INSERT OR IGNORE INTO players (name) VALUES (?)`, name); err != nil {
+				log.Printf("seed player %q: %v", name, err)
+			}
+		}
+	}
+
+	if users := os.Getenv("JCG_SEED_USERS"); users != "" {
+		for _, entry := range strings.Split(users, ",") {
+			parts := strings.SplitN(strings.TrimSpace(entry), ":", 2)
+			if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+				log.Printf("seed user: invalid entry %q (want username:password)", entry)
+				continue
+			}
+			hash, err := bcrypt.GenerateFromPassword([]byte(parts[1]), bcrypt.DefaultCost)
+			if err != nil {
+				log.Printf("seed user %q: bcrypt: %v", parts[0], err)
+				continue
+			}
+			if _, err := database.Exec(
+				`INSERT INTO users (username, password_hash) VALUES (?, ?)
+				 ON CONFLICT(username) DO UPDATE SET password_hash = excluded.password_hash`,
+				parts[0], string(hash),
+			); err != nil {
+				log.Printf("seed user %q: %v", parts[0], err)
+			}
+		}
+	}
+}
+

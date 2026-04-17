@@ -6,6 +6,9 @@ services:
     volumes:
       - jcg_data:/data
     restart: unless-stopped
+    environment:
+      - JCG_SEED_PLAYERS=Michael,Dan,James,Mark
+      - JCG_SEED_USERS=admin:test
 
 volumes:
   jcg_data:
