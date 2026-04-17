@@ -71,11 +71,12 @@ func TestEntrySubmit_ValidResult_RedirectsAndPersists(t *testing.T) {
 	h := entryTestHandler(t)
 
 	form := url.Values{
-		"season_id":  {"1"},
-		"game_title": {"Wingspan"},
-		"played_at":  {"2026-04-12"},
-		"score_1":    {"90"},
-		"score_2":    {"70"},
+		"season_id":   {"1"},
+		"game_number": {"1"},
+		"game_title":  {"Wingspan"},
+
+		"place_1":    {"1"},
+		"place_2":    {"2"},
 	}
 	r := authenticatedRequest("POST", "/enter", form.Encode())
 	w := httptest.NewRecorder()
@@ -102,7 +103,7 @@ func TestEntrySubmit_MissingRequiredFields_Returns400(t *testing.T) {
 
 	form := url.Values{
 		"season_id": {"1"},
-		// missing game_title and played_at
+		// missing game_title
 	}
 	r := authenticatedRequest("POST", "/enter", form.Encode())
 	w := httptest.NewRecorder()
@@ -114,14 +115,14 @@ func TestEntrySubmit_MissingRequiredFields_Returns400(t *testing.T) {
 	}
 }
 
-func TestEntrySubmit_OnlyOneScore_Returns400(t *testing.T) {
+func TestEntrySubmit_OnlyOnePlacement_Returns400(t *testing.T) {
 	h := entryTestHandler(t)
 
 	form := url.Values{
-		"season_id":  {"1"},
-		"game_title": {"Wingspan"},
-		"played_at":  {"2026-04-12"},
-		"score_1":    {"90"},
+		"season_id":   {"1"},
+		"game_number": {"1"},
+		"game_title":  {"Wingspan"},
+		"place_1":     {"1"},
 	}
 	r := authenticatedRequest("POST", "/enter", form.Encode())
 	w := httptest.NewRecorder()
@@ -137,10 +138,11 @@ func TestEntrySubmit_NegativeScore_Returns400(t *testing.T) {
 	h := entryTestHandler(t)
 
 	form := url.Values{
-		"season_id":  {"1"},
-		"game_title": {"Wingspan"},
-		"played_at":  {"2026-04-12"},
-		"score_1":    {"-5"},
+		"season_id":   {"1"},
+		"game_number": {"1"},
+		"game_title":  {"Wingspan"},
+
+		"place_1":    {"-5"},
 		"score_2":    {"10"},
 	}
 	r := authenticatedRequest("POST", "/enter", form.Encode())
@@ -159,9 +161,9 @@ func TestEntrySubmit_WhitespaceGameTitle_Returns400(t *testing.T) {
 	form := url.Values{
 		"season_id":  {"1"},
 		"game_title": {"   "},
-		"played_at":  {"2026-04-12"},
-		"score_1":    {"90"},
-		"score_2":    {"70"},
+
+		"place_1":    {"1"},
+		"place_2":    {"2"},
 	}
 	r := authenticatedRequest("POST", "/enter", form.Encode())
 	w := httptest.NewRecorder()
@@ -177,11 +179,12 @@ func TestEntrySubmit_MalformedScoreKey_Returns400(t *testing.T) {
 	h := entryTestHandler(t)
 
 	form := url.Values{
-		"season_id":  {"1"},
-		"game_title": {"Wingspan"},
-		"played_at":  {"2026-04-12"},
-		"score_abc":  {"10"},
-		"score_def":  {"20"},
+		"season_id":   {"1"},
+		"game_number": {"1"},
+		"game_title":  {"Wingspan"},
+
+		"place_abc":  {"1"},
+		"place_def":  {"2"},
 	}
 	r := authenticatedRequest("POST", "/enter", form.Encode())
 	w := httptest.NewRecorder()

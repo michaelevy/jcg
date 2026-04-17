@@ -9,7 +9,8 @@ COPY . .
 
 # CGO_ENABLED=1 required for mattn/go-sqlite3.
 # Dynamic linking against glibc — runtime image must also be glibc-based (debian).
-RUN CGO_ENABLED=1 GOOS=linux go build -o server ./cmd/server
+RUN CGO_ENABLED=1 GOOS=linux go build -o server ./cmd/server && \
+    CGO_ENABLED=1 GOOS=linux go build -o seed ./cmd/seed
 
 # Stage 2: Run
 FROM debian:bookworm-slim
@@ -20,6 +21,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/server .
+COPY --from=builder /app/seed .
 
 VOLUME ["/data"]
 EXPOSE 8080

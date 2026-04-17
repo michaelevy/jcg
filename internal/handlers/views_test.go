@@ -22,9 +22,9 @@ func leaderboardTestHandler(t *testing.T) *Handler {
 	database.Exec(`INSERT INTO players (id, name) VALUES (1, 'Alice'), (2, 'Bob')`)
 	database.Exec(`INSERT INTO seasons (id, name) VALUES (1, 'Season 1')`)
 	database.Exec(`INSERT INTO games (id, title) VALUES (1, 'Wingspan')`)
-	database.Exec(`INSERT INTO game_results (id, season_id, game_id, played_at) VALUES (1, 1, 1, '2026-04-12')`)
-	database.Exec(`INSERT INTO player_scores (result_id, player_id, score, placement, season_points)
-		VALUES (1, 1, 100, 1, 4), (1, 2, 80, 2, 2)`)
+	database.Exec(`INSERT INTO game_results (id, season_id, game_id, game_number) VALUES (1, 1, 1, 1)`)
+	database.Exec(`INSERT INTO player_scores (result_id, player_id, placement, season_points)
+		VALUES (1, 1, 1, 4), (1, 2, 2, 2)`)
 
 	tmpl := template.Must(
 		template.New("").Funcs(template.FuncMap{

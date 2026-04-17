@@ -28,21 +28,21 @@
         </div>
       </details>
 
+      <label for="game_number">Game #</label>
+      <input id="game_number" name="game_number" type="number" min="1" step="1" required placeholder="e.g. 7">
+
       <label for="game_title">Game</label>
       <input id="game_title" name="game_title" list="games-list" type="text" required placeholder="Start typing...">
       <datalist id="games-list">
         {{range .Games}}<option value="{{.Title}}">{{end}}
       </datalist>
 
-      <label for="played_at">Date played</label>
-      <input id="played_at" name="played_at" type="date" value="{{.Today}}" required>
-
       <fieldset style="margin-top: 1.5rem; border: 1px solid #ccc; border-radius: 4px; padding: 1rem;">
-        <legend>Scores <span style="font-weight: normal; font-size: 0.85rem;">(leave blank for absent players)</span></legend>
+        <legend>Placements <span style="font-weight: normal; font-size: 0.85rem;">(leave blank for absent players)</span></legend>
         {{range .Players}}
         <div style="display: flex; align-items: center; gap: 1rem; margin-top: 0.5rem;">
           <label style="min-width: 120px; font-weight: normal;">{{.Name}}</label>
-          <input type="number" name="score_{{.ID}}" min="0" placeholder="score"
+          <input type="number" name="place_{{.ID}}" min="1" step="1" placeholder="place"
                  style="width: 100px;">
         </div>
         {{end}}

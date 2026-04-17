@@ -71,6 +71,24 @@ func InjectUsername(ctx context.Context, username string) context.Context {
 	return context.WithValue(ctx, CtxKeyUsername, username)
 }
 
+// LoadSession injects the username into context if a valid session cookie exists,
+// but does not redirect unauthenticated requests. Use for public routes that
+// want to know who's logged in without enforcing auth.
+func LoadSession(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if cookie, err := r.Cookie(cookieName); err == nil {
+			if val, ok := store.Load(cookie.Value); ok {
+				entry := val.(sessionEntry)
+				if !time.Now().After(entry.expires) {
+					ctx := context.WithValue(r.Context(), CtxKeyUsername, entry.username)
+					r = r.WithContext(ctx)
+				}
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 // RequireAuth is middleware that redirects unauthenticated requests to /login.
 // Authenticated requests have the username injected into context via CtxKeyUsername.
 func RequireAuth(next http.Handler) http.Handler {

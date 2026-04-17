@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"jcg/internal/db"
 	"jcg/internal/middleware"
@@ -34,7 +33,6 @@ func (h *Handler) EntryPage(w http.ResponseWriter, r *http.Request) {
 		"Players":          players,
 		"Seasons":          seasons,
 		"Games":            games,
-		"Today":            time.Now().Format("2006-01-02"),
 		"SelectedSeasonID": int64(0),
 	})
 }
@@ -47,10 +45,10 @@ func (h *Handler) EntrySubmit(w http.ResponseWriter, r *http.Request) {
 
 	seasonIDStr := r.FormValue("season_id")
 	gameTitle := strings.TrimSpace(r.FormValue("game_title"))
-	playedAt := r.FormValue("played_at")
+	gameNumberStr := r.FormValue("game_number")
 
-	if seasonIDStr == "" || gameTitle == "" || playedAt == "" {
-		http.Error(w, "season, game, and date are required", http.StatusBadRequest)
+	if seasonIDStr == "" || gameTitle == "" || gameNumberStr == "" {
+		http.Error(w, "season, game, and game number are required", http.StatusBadRequest)
 		return
 	}
 
@@ -60,43 +58,45 @@ func (h *Handler) EntrySubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	gameNumber, err := strconv.Atoi(gameNumberStr)
+	if err != nil || gameNumber < 1 {
+		http.Error(w, "game number must be a positive integer", http.StatusBadRequest)
+		return
+	}
+
 	gameID, err := db.CreateGame(h.db, gameTitle)
 	if err != nil {
 		http.Error(w, "db error", http.StatusInternalServerError)
 		return
 	}
 
-	// Parse per-player scores from form fields named "score_<playerID>".
-	rawScores := map[int64]int{}
+	// Parse per-player placements from form fields named "place_<playerID>".
+	placements := map[int64]int{}
 	for key, vals := range r.Form {
-		if strings.HasPrefix(key, "score_") && len(vals) > 0 && vals[0] != "" {
-			playerIDStr := key[6:] // Extract portion after "score_"
+		if strings.HasPrefix(key, "place_") && len(vals) > 0 && vals[0] != "" {
+			playerIDStr := key[6:] // Extract portion after "place_"
 			playerID, err := strconv.ParseInt(playerIDStr, 10, 64)
 			if err != nil {
 				http.Error(w, fmt.Sprintf("invalid player ID in %s", key), http.StatusBadRequest)
 				return
 			}
-			score, err := strconv.Atoi(vals[0])
-			if err != nil {
-				http.Error(w, fmt.Sprintf("invalid score for player %d", playerID), http.StatusBadRequest)
+			place, err := strconv.Atoi(vals[0])
+			if err != nil || place < 1 {
+				http.Error(w, fmt.Sprintf("invalid placement for player %d", playerID), http.StatusBadRequest)
 				return
 			}
-			if score < 0 {
-				http.Error(w, fmt.Sprintf("score for player %d cannot be negative", playerID), http.StatusBadRequest)
-				return
-			}
-			rawScores[playerID] = score
+			placements[playerID] = place
 		}
 	}
 
-	if len(rawScores) < 2 {
-		http.Error(w, "enter scores for at least 2 players", http.StatusBadRequest)
+	if len(placements) < 2 {
+		http.Error(w, "enter placements for at least 2 players", http.StatusBadRequest)
 		return
 	}
 
-	scored := db.ComputePlacements(rawScores)
+	scored := db.PlacementsToScores(placements)
 
-	if err := db.InsertGameResult(h.db, seasonID, gameID, playedAt, scored); err != nil {
+	if err := db.InsertGameResult(h.db, seasonID, gameID, gameNumber, scored); err != nil {
 		http.Error(w, "db error", http.StatusInternalServerError)
 		return
 	}

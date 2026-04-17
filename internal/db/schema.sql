@@ -19,9 +19,10 @@ CREATE TABLE IF NOT EXISTS games (
 -- One row per session a board game was played within a season.
 CREATE TABLE IF NOT EXISTS game_results (
     id        INTEGER PRIMARY KEY AUTOINCREMENT,
-    season_id INTEGER NOT NULL REFERENCES seasons(id),
-    game_id   INTEGER NOT NULL REFERENCES games(id),
-    played_at DATE NOT NULL
+    season_id   INTEGER NOT NULL REFERENCES seasons(id),
+    game_id     INTEGER NOT NULL REFERENCES games(id),
+    game_number INTEGER NOT NULL,
+    UNIQUE(season_id, game_number)
 );
 
 -- Per-player scores for each game_result.
@@ -31,7 +32,6 @@ CREATE TABLE IF NOT EXISTS player_scores (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     result_id     INTEGER NOT NULL REFERENCES game_results(id),
     player_id     INTEGER NOT NULL REFERENCES players(id),
-    score         INTEGER NOT NULL,
     placement     INTEGER NOT NULL,
     season_points INTEGER NOT NULL,
     UNIQUE(result_id, player_id)

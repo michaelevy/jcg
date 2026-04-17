@@ -3,7 +3,6 @@ package db
 import (
 	"database/sql"
 	"fmt"
-	"sort"
 	"time"
 )
 
@@ -29,7 +28,6 @@ type Game struct {
 // PlayerScore is one player's result within a game result entry.
 type PlayerScore struct {
 	PlayerID     int64
-	Score        int
 	Placement    int // 1 = winner
 	SeasonPoints int // 4/2/1/0 for placements 1/2/3/4+
 }
@@ -114,36 +112,16 @@ func CreateGame(db *sql.DB, title string) (int64, error) {
 	return id, nil
 }
 
-// ComputePlacements ranks scores highest-first and assigns placements (1-indexed).
-// Ties share the same placement (e.g. two players tied for 1st both get placement 1
-// and both receive 4 season points — the position below them is skipped accordingly).
-// SeasonPoints: 4/2/1/0 for placements 1/2/3/4+.
-func ComputePlacements(scores map[int64]int) []PlayerScore {
-	type pair struct {
-		playerID int64
-		score    int
-	}
-	pairs := make([]pair, 0, len(scores))
-	for pid, s := range scores {
-		pairs = append(pairs, pair{pid, s})
-	}
-	sort.Slice(pairs, func(i, j int) bool {
-		return pairs[i].score > pairs[j].score // descending
-	})
-
-	results := make([]PlayerScore, len(pairs))
-	for i, p := range pairs {
-		placement := i + 1
-		// Ties share the same placement as the previous player.
-		if i > 0 && p.score == pairs[i-1].score {
-			placement = results[i-1].Placement
-		}
-		results[i] = PlayerScore{
-			PlayerID:     p.playerID,
-			Score:        p.score,
+// PlacementsToScores converts a map of playerID->placement into PlayerScore entries
+// with season_points computed. Ties are supported: two players can share a placement.
+func PlacementsToScores(placements map[int64]int) []PlayerScore {
+	results := make([]PlayerScore, 0, len(placements))
+	for pid, placement := range placements {
+		results = append(results, PlayerScore{
+			PlayerID:     pid,
 			Placement:    placement,
 			SeasonPoints: seasonPoints(placement),
-		}
+		})
 	}
 	return results
 }
@@ -224,7 +202,7 @@ func Leaderboard(db *sql.DB, seasonID int64) ([]LeaderboardRow, error) {
 }
 
 // InsertGameResult writes a game_result row and its player_scores in a transaction.
-func InsertGameResult(db *sql.DB, seasonID, gameID int64, playedAt string, scores []PlayerScore) error {
+func InsertGameResult(db *sql.DB, seasonID, gameID int64, gameNumber int, scores []PlayerScore) error {
 	tx, err := db.Begin()
 	if err != nil {
 		return err
@@ -232,8 +210,8 @@ func InsertGameResult(db *sql.DB, seasonID, gameID int64, playedAt string, score
 	defer tx.Rollback()
 
 	res, err := tx.Exec(
-		`INSERT INTO game_results (season_id, game_id, played_at) VALUES (?, ?, ?)`,
-		seasonID, gameID, playedAt,
+		`INSERT INTO game_results (season_id, game_id, game_number) VALUES (?, ?, ?)`,
+		seasonID, gameID, gameNumber,
 	)
 	if err != nil {
 		return fmt.Errorf("insert game_result: %w", err)
@@ -242,8 +220,8 @@ func InsertGameResult(db *sql.DB, seasonID, gameID int64, playedAt string, score
 
 	for _, s := range scores {
 		_, err = tx.Exec(
-			`INSERT INTO player_scores (result_id, player_id, score, placement, season_points) VALUES (?, ?, ?, ?, ?)`,
-			resultID, s.PlayerID, s.Score, s.Placement, s.SeasonPoints,
+			`INSERT INTO player_scores (result_id, player_id, placement, season_points) VALUES (?, ?, ?, ?)`,
+			resultID, s.PlayerID, s.Placement, s.SeasonPoints,
 		)
 		if err != nil {
 			return fmt.Errorf("insert player_score: %w", err)

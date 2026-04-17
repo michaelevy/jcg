@@ -4,14 +4,14 @@ import (
 	"testing"
 )
 
-func TestComputePlacements_BasicRanking(t *testing.T) {
-	scores := map[int64]int{
-		1: 100,
-		2: 80,
-		3: 60,
-		4: 40,
+func TestPlacementsToScores_AssignsSeasonPoints(t *testing.T) {
+	placements := map[int64]int{
+		1: 1,
+		2: 2,
+		3: 3,
+		4: 4,
 	}
-	results := ComputePlacements(scores)
+	results := PlacementsToScores(placements)
 
 	byPlayer := map[int64]PlayerScore{}
 	for _, r := range results {
@@ -37,20 +37,19 @@ func TestComputePlacements_BasicRanking(t *testing.T) {
 	}
 }
 
-func TestComputePlacements_TiedScores_SharePlacementAndPoints(t *testing.T) {
-	scores := map[int64]int{
-		1: 100,
-		2: 100, // tied for 1st with player 1
-		3: 60,
+func TestPlacementsToScores_TiedPlacements_BothGetSamePoints(t *testing.T) {
+	placements := map[int64]int{
+		1: 1,
+		2: 1, // tied for 1st
+		3: 3,
 	}
-	results := ComputePlacements(scores)
+	results := PlacementsToScores(placements)
 
 	byPlayer := map[int64]PlayerScore{}
 	for _, r := range results {
 		byPlayer[r.PlayerID] = r
 	}
 
-	// Both tied players share placement 1 and receive 4 season points.
 	if byPlayer[1].Placement != 1 || byPlayer[1].SeasonPoints != 4 {
 		t.Errorf("player 1 (tied 1st): want placement=1 pts=4, got placement=%d pts=%d",
 			byPlayer[1].Placement, byPlayer[1].SeasonPoints)
@@ -59,9 +58,8 @@ func TestComputePlacements_TiedScores_SharePlacementAndPoints(t *testing.T) {
 		t.Errorf("player 2 (tied 1st): want placement=1 pts=4, got placement=%d pts=%d",
 			byPlayer[2].Placement, byPlayer[2].SeasonPoints)
 	}
-	// Player 3 is 3rd place (positions 1 and 2 are both occupied by the tie).
 	if byPlayer[3].Placement != 3 || byPlayer[3].SeasonPoints != 1 {
-		t.Errorf("player 3 (3rd after tie): want placement=3 pts=1, got placement=%d pts=%d",
+		t.Errorf("player 3 (3rd): want placement=3 pts=1, got placement=%d pts=%d",
 			byPlayer[3].Placement, byPlayer[3].SeasonPoints)
 	}
 }
@@ -84,10 +82,10 @@ func TestInsertGameResult_PersistsData(t *testing.T) {
 	}
 
 	scores := []PlayerScore{
-		{PlayerID: 1, Score: 90, Placement: 1, SeasonPoints: 3},
-		{PlayerID: 2, Score: 70, Placement: 2, SeasonPoints: 2},
+		{PlayerID: 1, Placement: 1, SeasonPoints: 4},
+		{PlayerID: 2, Placement: 2, SeasonPoints: 2},
 	}
-	if err := InsertGameResult(database, 1, 1, "2026-04-12", scores); err != nil {
+	if err := InsertGameResult(database, 1, 1, 1, scores); err != nil {
 		t.Fatalf("InsertGameResult: %v", err)
 	}
 
@@ -114,9 +112,9 @@ func TestLeaderboard_RanksPlayers(t *testing.T) {
 	database.Exec(`INSERT INTO seasons (id, name) VALUES (1, 'Season 1')`)
 	database.Exec(`INSERT INTO games (id, title) VALUES (1, 'Wingspan')`)
 	// Alice wins (4pts), Bob 2nd (2pts), Carol 3rd (1pt).
-	database.Exec(`INSERT INTO game_results (id, season_id, game_id, played_at) VALUES (1, 1, 1, '2026-04-12')`)
-	database.Exec(`INSERT INTO player_scores (result_id, player_id, score, placement, season_points)
-		VALUES (1, 1, 100, 1, 4), (1, 2, 80, 2, 2), (1, 3, 60, 3, 1)`)
+	database.Exec(`INSERT INTO game_results (id, season_id, game_id, game_number) VALUES (1, 1, 1, 1)`)
+	database.Exec(`INSERT INTO player_scores (result_id, player_id, placement, season_points)
+		VALUES (1, 1, 1, 4), (1, 2, 2, 2), (1, 3, 3, 1)`)
 
 	rows, err := Leaderboard(database, 1)
 	if err != nil {
@@ -195,14 +193,14 @@ func TestLeaderboard_MultiSeasonIsolation_RegressionTest(t *testing.T) {
 	database.Exec(`INSERT INTO games (id, title) VALUES (1, 'Game1'), (2, 'Game2')`)
 
 	// Season 1: Player 1 wins with 4 points
-	database.Exec(`INSERT INTO game_results (id, season_id, game_id, played_at) VALUES (1, 1, 1, '2026-04-01')`)
-	database.Exec(`INSERT INTO player_scores (result_id, player_id, score, placement, season_points)
-		VALUES (1, 1, 100, 1, 4), (1, 2, 50, 2, 2)`)
+	database.Exec(`INSERT INTO game_results (id, season_id, game_id, game_number) VALUES (1, 1, 1, 1)`)
+	database.Exec(`INSERT INTO player_scores (result_id, player_id, placement, season_points)
+		VALUES (1, 1, 1, 4), (1, 2, 2, 2)`)
 
 	// Season 2: Player 2 wins with 4 points
-	database.Exec(`INSERT INTO game_results (id, season_id, game_id, played_at) VALUES (2, 2, 2, '2026-04-02')`)
-	database.Exec(`INSERT INTO player_scores (result_id, player_id, score, placement, season_points)
-		VALUES (2, 2, 100, 1, 4), (2, 1, 50, 2, 2)`)
+	database.Exec(`INSERT INTO game_results (id, season_id, game_id, game_number) VALUES (2, 2, 2, 1)`)
+	database.Exec(`INSERT INTO player_scores (result_id, player_id, placement, season_points)
+		VALUES (2, 2, 1, 4), (2, 1, 2, 2)`)
 
 	// Test Season 1 leaderboard: Player 1 has 4 points, Player 2 has 2 points
 	rows1, err := Leaderboard(database, 1)
