@@ -6,3 +6,5 @@
 /cmd/server/server
 .env
 .DS_Store
+.claude/
+docs/
