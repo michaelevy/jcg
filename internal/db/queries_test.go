@@ -242,3 +242,57 @@ func TestLeaderboard_MultiSeasonIsolation_RegressionTest(t *testing.T) {
 			rows2[1].PlayerName, rows2[1].TotalPoints)
 	}
 }
+
+func TestSeasonHistory_ReturnsSortedByGameNumber(t *testing.T) {
+	database, err := Open("file::memory:?cache=shared&_foreign_keys=on")
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	defer database.Close()
+
+	database.Exec(`INSERT INTO players (id, name) VALUES (1, 'Alice'), (2, 'Bob')`)
+	database.Exec(`INSERT INTO seasons (id, name) VALUES (1, 'S1')`)
+	database.Exec(`INSERT INTO games (id, title) VALUES (1, 'Wingspan'), (2, 'Catan')`)
+	database.Exec(`INSERT INTO game_results (id, season_id, game_id, game_number) VALUES (1, 1, 1, 1), (2, 1, 2, 2)`)
+	database.Exec(`INSERT INTO player_scores (result_id, player_id, placement, season_points)
+		VALUES (1, 1, 1, 4), (1, 2, 2, 2), (2, 2, 1, 4), (2, 1, 2, 2)`)
+
+	summaries, err := SeasonHistory(database, 1)
+	if err != nil {
+		t.Fatalf("SeasonHistory: %v", err)
+	}
+	if len(summaries) != 2 {
+		t.Fatalf("want 2 summaries, got %d", len(summaries))
+	}
+	if summaries[0].GameNumber != 1 || summaries[0].Title != "Wingspan" {
+		t.Errorf("first: want game 1 Wingspan, got game %d %q", summaries[0].GameNumber, summaries[0].Title)
+	}
+	if len(summaries[0].Placements) != 2 {
+		t.Errorf("want 2 placements for game 1, got %d", len(summaries[0].Placements))
+	}
+	if summaries[0].Placements[0].PlayerName != "Alice" || summaries[0].Placements[0].Placement != 1 {
+		t.Errorf("first placement: want Alice 1st, got %s %d",
+			summaries[0].Placements[0].PlayerName, summaries[0].Placements[0].Placement)
+	}
+	if summaries[1].Title != "Catan" {
+		t.Errorf("second: want Catan, got %q", summaries[1].Title)
+	}
+}
+
+func TestSeasonHistory_EmptySeason_ReturnsEmpty(t *testing.T) {
+	database, err := Open("file::memory:?cache=shared&_foreign_keys=on")
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	defer database.Close()
+
+	database.Exec(`INSERT INTO seasons (id, name) VALUES (1, 'S1')`)
+
+	summaries, err := SeasonHistory(database, 1)
+	if err != nil {
+		t.Fatalf("SeasonHistory: %v", err)
+	}
+	if len(summaries) != 0 {
+		t.Errorf("want 0 summaries for empty season, got %d", len(summaries))
+	}
+}

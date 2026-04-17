@@ -249,3 +249,72 @@ func InsertGameResult(db *sql.DB, seasonID, gameID int64, gameNumber int, scores
 
 	return tx.Commit()
 }
+
+// PlacementRow is one player's result within a game session, used in history and detail views.
+type PlacementRow struct {
+	PlayerID   int64
+	PlayerName string
+	Placement  int
+	Points     int
+}
+
+// GameSummary is one game session for the season history view.
+type GameSummary struct {
+	ResultID   int64
+	GameNumber int
+	GameID     int64
+	Title      string
+	Placements []PlacementRow
+}
+
+// SeasonHistory returns all game sessions in a season ordered by game_number,
+// each with placements sorted by rank.
+func SeasonHistory(db *sql.DB, seasonID int64) ([]GameSummary, error) {
+	const q = `
+		SELECT
+			gr.id, gr.game_number, g.id, g.title,
+			p.id, p.name, ps.placement, ps.season_points
+		FROM game_results gr
+		JOIN games g ON g.id = gr.game_id
+		JOIN player_scores ps ON ps.result_id = gr.id
+		JOIN players p ON p.id = ps.player_id
+		WHERE gr.season_id = ?
+		ORDER BY gr.game_number, ps.placement
+	`
+	rows, err := db.Query(q, seasonID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var summaries []GameSummary
+	index := map[int64]int{} // resultID -> slice index
+	for rows.Next() {
+		var (
+			resultID, gameID, playerID    int64
+			gameNumber, placement, points int
+			title, playerName             string
+		)
+		if err := rows.Scan(&resultID, &gameNumber, &gameID, &title,
+			&playerID, &playerName, &placement, &points); err != nil {
+			return nil, err
+		}
+		if _, seen := index[resultID]; !seen {
+			index[resultID] = len(summaries)
+			summaries = append(summaries, GameSummary{
+				ResultID:   resultID,
+				GameNumber: gameNumber,
+				GameID:     gameID,
+				Title:      title,
+			})
+		}
+		i := index[resultID]
+		summaries[i].Placements = append(summaries[i].Placements, PlacementRow{
+			PlayerID:   playerID,
+			PlayerName: playerName,
+			Placement:  placement,
+			Points:     points,
+		})
+	}
+	return summaries, rows.Err()
+}
