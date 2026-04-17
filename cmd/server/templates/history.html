@@ -1,0 +1,61 @@
+{{define "history"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>{{template "head" .}}</head>
+<body>
+  {{template "nav" .}}
+  <main>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+      <h1>
+        {{if .Season.Name}}{{.Season.Name}} — Game History{{else}}Game History{{end}}
+      </h1>
+      {{if .Seasons}}
+      <select id="season-selector"
+              hx-get="/history"
+              hx-target="#history-section"
+              hx-swap="innerHTML"
+              hx-include="#season-selector"
+              name="season"
+              style="padding: 0.4rem 0.6rem; border: 1px solid #ccc; border-radius: 4px;">
+        {{range .Seasons}}
+        <option value="{{.ID}}" {{if eq .ID $.SeasonID}}selected{{end}}>{{.Name}}</option>
+        {{end}}
+      </select>
+      {{end}}
+    </div>
+    <p style="margin-bottom: 1.5rem;"><a href="/">← Leaderboard</a></p>
+    <div id="history-section">
+      {{template "history-table" .}}
+    </div>
+  </main>
+</body>
+</html>
+{{end}}
+
+{{define "history-table"}}
+{{if not .Games}}
+  <p>No games recorded for this season yet.</p>
+{{else}}
+{{range .Games}}
+<div style="border: 1px solid #ddd; border-radius: 4px; padding: 1rem; margin-bottom: 1rem;">
+  <h3 style="margin: 0 0 0.5rem 0;">
+    Game {{.GameNumber}}: <a href="/game-results/{{.ResultID}}">{{.Title}}</a>
+  </h3>
+  <table>
+    <thead>
+      <tr><th>#</th><th>Player</th><th>Points</th></tr>
+    </thead>
+    <tbody>
+      {{range .Placements}}
+      <tr>
+        <td>{{.Placement}}</td>
+        <td><a href="/players/{{.PlayerID}}">{{.PlayerName}}</a></td>
+        <td>{{.Points}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+{{end}}
+{{end}}
+{{end}}
