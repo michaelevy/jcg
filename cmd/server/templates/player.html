@@ -1,0 +1,56 @@
+{{define "player"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>{{template "head" .}}</head>
+<body>
+  {{template "nav" .}}
+  <main>
+    <h1>{{.Player.Name}}</h1>
+    <p><a href="/">← Leaderboard</a></p>
+
+    <h2>Season Stats</h2>
+    {{if not .SeasonStats}}
+      <p>No games played yet.</p>
+    {{else}}
+    <table>
+      <thead>
+        <tr><th>Season</th><th>Games</th><th>Points</th><th>Wins</th></tr>
+      </thead>
+      <tbody>
+        {{range .SeasonStats}}
+        <tr>
+          <td><a href="/history?season={{.SeasonID}}">{{.SeasonName}}</a></td>
+          <td>{{.GamesPlayed}}</td>
+          <td><strong>{{.TotalPoints}}</strong></td>
+          <td>{{.Wins}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+    {{end}}
+
+    <h2 style="margin-top: 2rem;">Game History</h2>
+    {{if not .GameHistory}}
+      <p>No game history.</p>
+    {{else}}
+    <table>
+      <thead>
+        <tr><th>Season</th><th>#</th><th>Game</th><th>Place</th><th>Points</th></tr>
+      </thead>
+      <tbody>
+        {{range .GameHistory}}
+        <tr>
+          <td><a href="/history?season={{.SeasonID}}">{{.SeasonName}}</a></td>
+          <td>{{.GameNumber}}</td>
+          <td><a href="/game-results/{{.ResultID}}">{{.GameTitle}}</a></td>
+          <td>{{.Placement}}</td>
+          <td>{{.Points}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+    {{end}}
+  </main>
+</body>
+</html>
+{{end}}
