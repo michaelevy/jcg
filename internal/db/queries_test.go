@@ -394,3 +394,86 @@ func TestPlayerGameHistory_ReturnsAllGamesAcrossSeasons(t *testing.T) {
 		t.Errorf("second row: want S1 placement 1, got %s placement %d", rows[1].SeasonName, rows[1].Placement)
 	}
 }
+
+func TestGetGameResult_ReturnsDetailWithPlacements(t *testing.T) {
+	database, err := Open("file::memory:?cache=shared&_foreign_keys=on")
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	defer database.Close()
+
+	database.Exec(`INSERT INTO players (id, name) VALUES (1, 'Alice'), (2, 'Bob')`)
+	database.Exec(`INSERT INTO seasons (id, name) VALUES (1, 'S1')`)
+	database.Exec(`INSERT INTO games (id, title) VALUES (1, 'Wingspan')`)
+	database.Exec(`INSERT INTO game_results (id, season_id, game_id, game_number) VALUES (1, 1, 1, 3)`)
+	database.Exec(`INSERT INTO player_scores (result_id, player_id, placement, season_points)
+		VALUES (1, 1, 1, 4), (1, 2, 2, 2)`)
+
+	detail, err := GetGameResult(database, 1)
+	if err != nil {
+		t.Fatalf("GetGameResult: %v", err)
+	}
+	if detail.ResultID != 1 || detail.GameNumber != 3 {
+		t.Errorf("want result 1 game_number 3, got result %d game_number %d", detail.ResultID, detail.GameNumber)
+	}
+	if detail.GameTitle != "Wingspan" {
+		t.Errorf("want title Wingspan, got %q", detail.GameTitle)
+	}
+	if detail.SeasonName != "S1" {
+		t.Errorf("want season S1, got %q", detail.SeasonName)
+	}
+	if len(detail.Placements) != 2 {
+		t.Fatalf("want 2 placements, got %d", len(detail.Placements))
+	}
+	if detail.Placements[0].PlayerName != "Alice" || detail.Placements[0].Placement != 1 {
+		t.Errorf("first placement: want Alice 1st, got %s %d",
+			detail.Placements[0].PlayerName, detail.Placements[0].Placement)
+	}
+}
+
+func TestGetGameResult_NotFound_ReturnsError(t *testing.T) {
+	database, err := Open("file::memory:?cache=shared&_foreign_keys=on")
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	defer database.Close()
+
+	_, err = GetGameResult(database, 99)
+	if err == nil {
+		t.Error("want error for missing game result, got nil")
+	}
+}
+
+func TestGamePlayHistory_ReturnsAllSessions(t *testing.T) {
+	database, err := Open("file::memory:?cache=shared&_foreign_keys=on")
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	defer database.Close()
+
+	database.Exec(`INSERT INTO players (id, name) VALUES (1, 'Alice'), (2, 'Bob')`)
+	database.Exec(`INSERT INTO seasons (id, name) VALUES (1, 'S1'), (2, 'S2')`)
+	database.Exec(`INSERT INTO games (id, title) VALUES (1, 'Wingspan'), (2, 'Catan')`)
+	// Wingspan played twice across two seasons
+	database.Exec(`INSERT INTO game_results (id, season_id, game_id, game_number)
+		VALUES (1, 1, 1, 1), (2, 2, 1, 2), (3, 1, 2, 2)`) // game 3 is Catan, different game
+	database.Exec(`INSERT INTO player_scores (result_id, player_id, placement, season_points)
+		VALUES (1, 1, 1, 4), (1, 2, 2, 2),
+		       (2, 2, 1, 4), (2, 1, 2, 2),
+		       (3, 1, 1, 4), (3, 2, 2, 2)`)
+
+	history, err := GamePlayHistory(database, 1) // Wingspan game_id=1
+	if err != nil {
+		t.Fatalf("GamePlayHistory: %v", err)
+	}
+	if len(history) != 2 {
+		t.Fatalf("want 2 history rows for Wingspan, got %d", len(history))
+	}
+	// Ordered by result id DESC — S2 game first
+	if history[0].SeasonName != "S2" || history[0].WinnerName != "Bob" {
+		t.Errorf("first: want S2 winner Bob, got %s winner %s", history[0].SeasonName, history[0].WinnerName)
+	}
+	if history[1].SeasonName != "S1" || history[1].WinnerName != "Alice" {
+		t.Errorf("second: want S1 winner Alice, got %s winner %s", history[1].SeasonName, history[1].WinnerName)
+	}
+}
