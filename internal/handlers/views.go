@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"encoding/json"
+	"html/template"
 	"net/http"
 	"strconv"
 
@@ -35,6 +37,7 @@ func (h *Handler) Leaderboard(w http.ResponseWriter, r *http.Request) {
 
 	var rows []db.LeaderboardRow
 	var currentSeason db.Season
+	var graphJSON template.JS
 	if seasonID > 0 {
 		rows, err = db.Leaderboard(h.db, seasonID)
 		if err != nil {
@@ -46,6 +49,14 @@ func (h *Handler) Leaderboard(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "db error", http.StatusInternalServerError)
 			return
 		}
+		cumulative, err := db.CumulativePoints(h.db, seasonID)
+		if err != nil {
+			http.Error(w, "db error", http.StatusInternalServerError)
+			return
+		}
+		// json.Marshal cannot fail on []CumulativePointsRow (no channels, funcs, or cyclic refs).
+		b, _ := json.Marshal(cumulative)
+		graphJSON = template.JS(b)
 	}
 
 	data := map[string]any{
@@ -55,6 +66,7 @@ func (h *Handler) Leaderboard(w http.ResponseWriter, r *http.Request) {
 		"CurrentSeason": currentSeason,
 		"Rows":          rows,
 		"SeasonID":      seasonID,
+		"GraphJSON":     graphJSON,
 	}
 
 	// HTMX requests get only the table fragment (for the season selector swap).

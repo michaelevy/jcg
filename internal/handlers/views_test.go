@@ -153,3 +153,41 @@ func TestLeaderboard_NegativeSeasonParam_Returns400(t *testing.T) {
 		t.Errorf("want error message containing 'invalid season', got: %s", w.Body.String())
 	}
 }
+
+func TestLeaderboard_GraphJSONIncludedInResponse(t *testing.T) {
+	// Uses shared-cache DSN; tests must run serially (no t.Parallel).
+	database, err := db.Open("file::memory:?cache=shared&_foreign_keys=on")
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	t.Cleanup(func() { database.Close() })
+
+	database.Exec(`INSERT INTO players (id, name) VALUES (1, 'Alice'), (2, 'Bob')`)
+	database.Exec(`INSERT INTO seasons (id, name) VALUES (1, 'Season 1')`)
+	database.Exec(`INSERT INTO games (id, title) VALUES (1, 'Wingspan')`)
+	database.Exec(`INSERT INTO game_results (id, season_id, game_id, game_number) VALUES (1, 1, 1, 1)`)
+	database.Exec(`INSERT INTO player_scores (result_id, player_id, placement, season_points)
+		VALUES (1, 1, 1, 4), (1, 2, 2, 2)`)
+
+	tmpl := template.Must(
+		template.New("").Funcs(template.FuncMap{
+			"add": func(a, b int) int { return a + b },
+		}).Parse(`
+			{{define "leaderboard"}}GRAPH:{{.GraphJSON}}{{end}}
+			{{define "leaderboard-table"}}TABLE-GRAPH:{{.GraphJSON}}{{end}}
+		`),
+	)
+	h := New(database, tmpl)
+
+	r := httptest.NewRequest("GET", "/?season=1", nil)
+	w := httptest.NewRecorder()
+	h.Leaderboard(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("want 200, got %d", w.Code)
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, "GameNumber") {
+		t.Errorf("want GraphJSON containing cumulative points data, got: %s", body)
+	}
+}
