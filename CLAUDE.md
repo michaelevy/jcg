@@ -1,11 +1,11 @@
 # JCG - Board Game Score Tracker
 
-Last verified: 2026-04-17
+Last verified: 2026-04-19
 
 ## Tech Stack
 - Language: Go 1.25.5
 - Database: SQLite (go-sqlite3, WAL mode, foreign keys on)
-- Frontend: Server-rendered HTML templates (html/template) + HTMX
+- Frontend: Server-rendered HTML templates (html/template) + HTMX + Chart.js (CDN, leaderboard graph)
 - Auth: bcrypt (golang.org/x/crypto)
 - Deployment: Multi-stage Docker build + docker-compose
 
@@ -23,7 +23,10 @@ Last verified: 2026-04-17
 - `internal/middleware/` - In-memory session store, RequireAuth middleware
 
 ## Routes
-- `GET /` - Leaderboard (public, default season = latest)
+- `GET /` - Leaderboard with cumulative points graph (public, default season = latest)
+- `GET /history` - Season game history (public, season param, HTMX partial support)
+- `GET /players/{id}` - Player profile with per-season stats and game history (public)
+- `GET /game-results/{id}` - Game result detail with play history for that game (public)
 - `GET /login`, `POST /login`, `POST /logout` - Auth
 - `GET /enter`, `POST /enter` - Game result entry (auth required)
 - `POST /enter/season` - HTMX inline season creation (auth required)
@@ -33,7 +36,7 @@ Last verified: 2026-04-17
 - Templates use `embed.FS` from cmd/server; named blocks for HTMX partial swaps
 - Template FuncMap includes `add` (for 1-indexed display from 0-indexed loops)
 - Tests use in-memory SQLite (`file::memory:?cache=shared&_foreign_keys=on`)
-- Season points: 3/2/1/0 for placements 1st/2nd/3rd/4th+; ties share placement
+- Season points: 4/2/1/0 for placements 1st/2nd/3rd/4th+; ties share placement
 
 ## Boundaries
 - Safe to edit: `internal/`, `cmd/`
