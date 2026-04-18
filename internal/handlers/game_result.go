@@ -24,13 +24,13 @@ func (h *Handler) GameResultDetail(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "game result not found", http.StatusNotFound)
 			return
 		}
-		http.Error(w, "db error", http.StatusInternalServerError)
+		http.Error(w, "something has gone wrong which I haven't bothered to write a proper error message for", http.StatusInternalServerError)
 		return
 	}
 
 	playHistory, err := db.GamePlayHistory(h.db, detail.GameID)
 	if err != nil {
-		http.Error(w, "db error", http.StatusInternalServerError)
+		http.Error(w, "something has gone wrong which I haven't bothered to write a proper error message for", http.StatusInternalServerError)
 		return
 	}
 

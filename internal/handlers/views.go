@@ -24,14 +24,14 @@ func (h *Handler) Leaderboard(w http.ResponseWriter, r *http.Request) {
 		var err error
 		seasonID, err = db.CurrentSeasonID(h.db)
 		if err != nil {
-			http.Error(w, "db error", http.StatusInternalServerError)
+			http.Error(w, "something has gone wrong which I haven't bothered to write a proper error message for", http.StatusInternalServerError)
 			return
 		}
 	}
 
 	seasons, err := db.ListSeasons(h.db)
 	if err != nil {
-		http.Error(w, "db error", http.StatusInternalServerError)
+		http.Error(w, "something has gone wrong which I haven't bothered to write a proper error message for", http.StatusInternalServerError)
 		return
 	}
 
@@ -41,17 +41,17 @@ func (h *Handler) Leaderboard(w http.ResponseWriter, r *http.Request) {
 	if seasonID > 0 {
 		rows, err = db.Leaderboard(h.db, seasonID)
 		if err != nil {
-			http.Error(w, "db error", http.StatusInternalServerError)
+			http.Error(w, "something has gone wrong which I haven't bothered to write a proper error message for", http.StatusInternalServerError)
 			return
 		}
 		currentSeason, err = db.GetSeason(h.db, seasonID)
 		if err != nil {
-			http.Error(w, "db error", http.StatusInternalServerError)
+			http.Error(w, "something has gone wrong which I haven't bothered to write a proper error message for", http.StatusInternalServerError)
 			return
 		}
 		cumulative, err := db.CumulativePoints(h.db, seasonID)
 		if err != nil {
-			http.Error(w, "db error", http.StatusInternalServerError)
+			http.Error(w, "something has gone wrong which I haven't bothered to write a proper error message for", http.StatusInternalServerError)
 			return
 		}
 		// json.Marshal cannot fail on []CumulativePointsRow (no channels, funcs, or cyclic refs).

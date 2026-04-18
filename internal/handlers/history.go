@@ -22,14 +22,14 @@ func (h *Handler) SeasonGames(w http.ResponseWriter, r *http.Request) {
 		var err error
 		seasonID, err = db.CurrentSeasonID(h.db)
 		if err != nil {
-			http.Error(w, "db error", http.StatusInternalServerError)
+			http.Error(w, "something has gone wrong which I haven't bothered to write a proper error message for", http.StatusInternalServerError)
 			return
 		}
 	}
 
 	seasons, err := db.ListSeasons(h.db)
 	if err != nil {
-		http.Error(w, "db error", http.StatusInternalServerError)
+		http.Error(w, "something has gone wrong which I haven't bothered to write a proper error message for", http.StatusInternalServerError)
 		return
 	}
 
@@ -38,12 +38,12 @@ func (h *Handler) SeasonGames(w http.ResponseWriter, r *http.Request) {
 	if seasonID > 0 {
 		season, err = db.GetSeason(h.db, seasonID)
 		if err != nil {
-			http.Error(w, "db error", http.StatusInternalServerError)
+			http.Error(w, "something has gone wrong which I haven't bothered to write a proper error message for", http.StatusInternalServerError)
 			return
 		}
 		games, err = db.SeasonHistory(h.db, seasonID)
 		if err != nil {
-			http.Error(w, "db error", http.StatusInternalServerError)
+			http.Error(w, "something has gone wrong which I haven't bothered to write a proper error message for", http.StatusInternalServerError)
 			return
 		}
 	}

@@ -14,18 +14,33 @@ import (
 func (h *Handler) EntryPage(w http.ResponseWriter, r *http.Request) {
 	players, err := db.ListPlayers(h.db)
 	if err != nil {
-		http.Error(w, "db error", http.StatusInternalServerError)
+		http.Error(w, "something has gone wrong which I haven't bothered to write a proper error message for", http.StatusInternalServerError)
 		return
 	}
 	seasons, err := db.ListSeasons(h.db)
 	if err != nil {
-		http.Error(w, "db error", http.StatusInternalServerError)
+		http.Error(w, "something has gone wrong which I haven't bothered to write a proper error message for", http.StatusInternalServerError)
 		return
 	}
 	games, err := db.ListGames(h.db)
 	if err != nil {
-		http.Error(w, "db error", http.StatusInternalServerError)
+		http.Error(w, "something has gone wrong which I haven't bothered to write a proper error message for", http.StatusInternalServerError)
 		return
+	}
+
+	latestSeasonID, err := db.CurrentSeasonID(h.db)
+	if err != nil {
+		http.Error(w, "something has gone wrong which I haven't bothered to write a proper error message for", http.StatusInternalServerError)
+		return
+	}
+
+	var nextGameNumber int
+	if latestSeasonID > 0 {
+		nextGameNumber, err = db.NextGameNumber(h.db, latestSeasonID)
+		if err != nil {
+			http.Error(w, "something has gone wrong which I haven't bothered to write a proper error message for", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	h.render(w, "entry", map[string]any{
@@ -34,7 +49,8 @@ func (h *Handler) EntryPage(w http.ResponseWriter, r *http.Request) {
 		"Players":          players,
 		"Seasons":          seasons,
 		"Games":            games,
-		"SelectedSeasonID": int64(0),
+		"SelectedSeasonID": latestSeasonID,
+		"NextGameNumber":   nextGameNumber,
 	})
 }
 
@@ -67,7 +83,7 @@ func (h *Handler) EntrySubmit(w http.ResponseWriter, r *http.Request) {
 
 	gameID, err := db.CreateGame(h.db, gameTitle)
 	if err != nil {
-		http.Error(w, "db error", http.StatusInternalServerError)
+		http.Error(w, "something has gone wrong which I haven't bothered to write a proper error message for", http.StatusInternalServerError)
 		return
 	}
 
@@ -102,7 +118,7 @@ func (h *Handler) EntrySubmit(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, fmt.Sprintf("game #%d already exists for this season", gameNumber), http.StatusBadRequest)
 			return
 		}
-		http.Error(w, "db error", http.StatusInternalServerError)
+		http.Error(w, "something has gone wrong which I haven't bothered to write a proper error message for", http.StatusInternalServerError)
 		return
 	}
 
@@ -121,7 +137,7 @@ func (h *Handler) NextGameNumber(w http.ResponseWriter, r *http.Request) {
 
 	next, err := db.NextGameNumber(h.db, seasonID)
 	if err != nil {
-		http.Error(w, "db error", http.StatusInternalServerError)
+		http.Error(w, "something has gone wrong which I haven't bothered to write a proper error message for", http.StatusInternalServerError)
 		return
 	}
 
@@ -139,13 +155,13 @@ func (h *Handler) CreateSeason(w http.ResponseWriter, r *http.Request) {
 
 	id, err := db.CreateSeason(h.db, name)
 	if err != nil {
-		http.Error(w, "db error", http.StatusInternalServerError)
+		http.Error(w, "something has gone wrong which I haven't bothered to write a proper error message for", http.StatusInternalServerError)
 		return
 	}
 
 	seasons, err := db.ListSeasons(h.db)
 	if err != nil {
-		http.Error(w, "db error", http.StatusInternalServerError)
+		http.Error(w, "something has gone wrong which I haven't bothered to write a proper error message for", http.StatusInternalServerError)
 		return
 	}
 

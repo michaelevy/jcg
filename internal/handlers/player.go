@@ -24,19 +24,19 @@ func (h *Handler) PlayerProfile(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "player not found", http.StatusNotFound)
 			return
 		}
-		http.Error(w, "db error", http.StatusInternalServerError)
+		http.Error(w, "something has gone wrong which I haven't bothered to write a proper error message for", http.StatusInternalServerError)
 		return
 	}
 
 	seasonStats, err := db.PlayerSeasonStats(h.db, playerID)
 	if err != nil {
-		http.Error(w, "db error", http.StatusInternalServerError)
+		http.Error(w, "something has gone wrong which I haven't bothered to write a proper error message for", http.StatusInternalServerError)
 		return
 	}
 
 	gameHistory, err := db.PlayerGameHistory(h.db, playerID)
 	if err != nil {
-		http.Error(w, "db error", http.StatusInternalServerError)
+		http.Error(w, "something has gone wrong which I haven't bothered to write a proper error message for", http.StatusInternalServerError)
 		return
 	}
 
