@@ -42,7 +42,10 @@
         <tr>
           <td><a href="/history?season={{.SeasonID}}">{{.SeasonName}}</a></td>
           <td>{{.GameNumber}}</td>
-          <td><a href="/game-results/{{.ResultID}}">{{.GameTitle}}</a></td>
+          <td>
+            <!-- Link will be live after Phase 3 (game detail view) -->
+            <a href="/game-results/{{.ResultID}}">{{.GameTitle}}</a>
+          </td>
           <td>{{.Placement}}</td>
           <td>{{.Points}}</td>
         </tr>
