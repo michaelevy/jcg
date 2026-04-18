@@ -1,0 +1,51 @@
+{{define "game_result"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>{{template "head" .}}</head>
+<body>
+  {{template "nav" .}}
+  <main>
+    <h1>{{.Detail.GameTitle}}</h1>
+    <p>
+      <a href="/history?season={{.Detail.SeasonID}}">← {{.Detail.SeasonName}} Game History</a>
+    </p>
+
+    <h2>Game {{.Detail.GameNumber}} — {{.Detail.SeasonName}}</h2>
+    <table>
+      <thead>
+        <tr><th>#</th><th>Player</th><th>Points</th></tr>
+      </thead>
+      <tbody>
+        {{range .Detail.Placements}}
+        <tr>
+          <td>{{.Placement}}</td>
+          <td><a href="/players/{{.PlayerID}}">{{.PlayerName}}</a></td>
+          <td>{{.Points}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+
+    <h2 style="margin-top: 2rem;">All-Time Play History</h2>
+    {{if not .PlayHistory}}
+      <p>No other sessions on record.</p>
+    {{else}}
+    <table>
+      <thead>
+        <tr><th>Season</th><th>Game #</th><th>Winner</th></tr>
+      </thead>
+      <tbody>
+        {{range .PlayHistory}}
+        <tr>
+          <td><a href="/history?season={{.SeasonID}}">{{.SeasonName}}</a></td>
+          <td><a href="/game-results/{{.ResultID}}">{{.GameNumber}}</a></td>
+          <td><a href="/players/{{.WinnerID}}">{{.WinnerName}}</a></td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+    {{end}}
+  </main>
+</body>
+</html>
+{{end}}

@@ -57,6 +57,7 @@ func main() {
 	mux.Handle("GET /{$}", middleware.LoadSession(http.HandlerFunc(h.Leaderboard)))
 	mux.Handle("GET /history", middleware.LoadSession(http.HandlerFunc(h.SeasonGames)))
 	mux.Handle("GET /players/{id}", middleware.LoadSession(http.HandlerFunc(h.PlayerProfile)))
+	mux.Handle("GET /game-results/{id}", middleware.LoadSession(http.HandlerFunc(h.GameResultDetail)))
 
 	mux.HandleFunc("GET /login", h.LoginPage)
 	// TODO: add CSRF token protection before production deployment
