@@ -14,13 +14,13 @@
     {{else}}
     <table>
       <thead>
-        <tr><th>Season</th><th>Games</th><th>Points</th><th>Wins</th></tr>
+        <tr><th>Season</th><th>Position</th><th>Points</th><th>Wins</th></tr>
       </thead>
       <tbody>
         {{range .SeasonStats}}
         <tr>
           <td><a href="/history?season={{.SeasonID}}">{{.SeasonName}}</a></td>
-          <td>{{.GamesPlayed}}</td>
+          <td>{{.Position}}</td>
           <td><strong>{{.TotalPoints}}</strong></td>
           <td>{{.Wins}}</td>
         </tr>

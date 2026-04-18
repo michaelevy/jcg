@@ -330,27 +330,57 @@ func GetPlayer(db *sql.DB, id int64) (Player, error) {
 type PlayerSeasonStat struct {
 	SeasonID    int64
 	SeasonName  string
-	GamesPlayed int
+	Position    int
 	TotalPoints int
 	Wins        int
 }
 
 // PlayerSeasonStats returns per-season aggregates for a player, newest season first.
+// Position is the player's leaderboard rank within each season (ties share a rank).
 func PlayerSeasonStats(db *sql.DB, playerID int64) ([]PlayerSeasonStat, error) {
 	const q = `
+		WITH player_season AS (
+			SELECT
+				gr.season_id,
+				COALESCE(SUM(ps.season_points), 0) AS total_points,
+				COALESCE(SUM(CASE WHEN ps.placement = 1 THEN 1 ELSE 0 END), 0) AS wins
+			FROM player_scores ps
+			JOIN game_results gr ON gr.id = ps.result_id
+			WHERE ps.player_id = ?
+			GROUP BY gr.season_id
+		),
+		all_season_totals AS (
+			SELECT
+				gr.season_id,
+				ps.player_id,
+				p.name,
+				COALESCE(SUM(ps.season_points), 0) AS total_points,
+				COALESCE(SUM(CASE WHEN ps.placement = 1 THEN 1 ELSE 0 END), 0) AS wins
+			FROM player_scores ps
+			JOIN game_results gr ON gr.id = ps.result_id
+			JOIN players p ON p.id = ps.player_id
+			GROUP BY gr.season_id, ps.player_id
+		),
+		ranked AS (
+			SELECT
+				season_id, player_id,
+				RANK() OVER (
+					PARTITION BY season_id
+					ORDER BY total_points DESC, wins DESC, name ASC
+				) AS position
+			FROM all_season_totals
+		)
 		SELECT
 			s.id, s.name,
-			COUNT(ps.id)                                              AS games_played,
-			COALESCE(SUM(ps.season_points), 0)                        AS total_points,
-			COALESCE(SUM(CASE WHEN ps.placement = 1 THEN 1 ELSE 0 END), 0) AS wins
-		FROM player_scores ps
-		JOIN game_results gr ON gr.id = ps.result_id
-		JOIN seasons s ON s.id = gr.season_id
-		WHERE ps.player_id = ?
-		GROUP BY s.id
+			ps.total_points,
+			ps.wins,
+			r.position
+		FROM player_season ps
+		JOIN seasons s ON s.id = ps.season_id
+		JOIN ranked r ON r.season_id = ps.season_id AND r.player_id = ?
 		ORDER BY s.id DESC
 	`
-	rows, err := db.Query(q, playerID)
+	rows, err := db.Query(q, playerID, playerID)
 	if err != nil {
 		return nil, err
 	}
@@ -359,7 +389,7 @@ func PlayerSeasonStats(db *sql.DB, playerID int64) ([]PlayerSeasonStat, error) {
 	var out []PlayerSeasonStat
 	for rows.Next() {
 		var r PlayerSeasonStat
-		if err := rows.Scan(&r.SeasonID, &r.SeasonName, &r.GamesPlayed, &r.TotalPoints, &r.Wins); err != nil {
+		if err := rows.Scan(&r.SeasonID, &r.SeasonName, &r.TotalPoints, &r.Wins, &r.Position); err != nil {
 			return nil, err
 		}
 		out = append(out, r)

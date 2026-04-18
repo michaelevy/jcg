@@ -31,7 +31,7 @@
     </div>
 
     <p style="margin-bottom: 1.5rem;">
-      <a href="/history{{if .SeasonID}}?season={{.SeasonID}}{{end}}">Game History</a>
+      <a id="history-link" href="/history{{if .SeasonID}}?season={{.SeasonID}}{{end}}">Game History</a>
       {{if .Username}} · <a href="/enter">Record a game result</a>{{end}}
     </p>
 
@@ -89,6 +89,7 @@
         },
         options: {
           responsive: true,
+          maintainAspectRatio: false,
           plugins: { legend: { position: 'bottom' } },
           scales: { y: { beginAtZero: true, title: { display: true, text: 'Points' } } },
         },
@@ -99,6 +100,14 @@
     document.addEventListener('htmx:afterSwap', function(e) {
       if (e.target && e.target.id === 'leaderboard-section') {
         renderPointsGraph();
+        var meta = document.getElementById('season-meta');
+        if (meta) {
+          var name = meta.dataset.seasonName;
+          var id = meta.dataset.seasonId;
+          document.querySelector('h1').textContent = name || 'Leaderboard';
+          var historyLink = document.getElementById('history-link');
+          if (historyLink) historyLink.href = '/history' + (id ? '?season=' + id : '');
+        }
       }
     });
   </script>
@@ -107,6 +116,7 @@
 {{end}}
 
 {{define "leaderboard-table"}}
+<meta id="season-meta" data-season-id="{{.SeasonID}}" data-season-name="{{.CurrentSeason.Name}}">
 {{if not .Rows}}
   <p>No results yet for this season.
     {{if .Username}}<a href="/enter">Record the first game</a>.{{end}}
@@ -139,6 +149,6 @@
 {{/* graph data and chart always rendered, even when table is empty */}}
 <div style="margin-top: 2rem;">
   <script type="application/json" id="graph-data">{{.GraphJSON}}</script>
-  <canvas id="points-graph" style="max-height: 300px;"></canvas>
+  <canvas id="points-graph" style="height: 300px;"></canvas>
 </div>
 {{end}}

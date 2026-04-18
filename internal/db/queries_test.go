@@ -356,13 +356,15 @@ func TestPlayerSeasonStats_ReturnsSummaryPerSeason(t *testing.T) {
 		t.Fatalf("want 2 season stats, got %d", len(stats))
 	}
 	// Results ordered by season id DESC, so S2 first
-	if stats[0].SeasonName != "S2" || stats[0].TotalPoints != 2 || stats[0].Wins != 0 {
-		t.Errorf("S2 stats: want {S2, 2pts, 0 wins}, got {%s, %d, %d}",
-			stats[0].SeasonName, stats[0].TotalPoints, stats[0].Wins)
+	// In S2: Bob wins (4pts), Alice second (2pts) → Alice position 2
+	// In S1: Alice wins (4pts), Bob second (2pts) → Alice position 1
+	if stats[0].SeasonName != "S2" || stats[0].TotalPoints != 2 || stats[0].Wins != 0 || stats[0].Position != 2 {
+		t.Errorf("S2 stats: want {S2, 2pts, 0 wins, pos 2}, got {%s, %d, %d, pos %d}",
+			stats[0].SeasonName, stats[0].TotalPoints, stats[0].Wins, stats[0].Position)
 	}
-	if stats[1].SeasonName != "S1" || stats[1].TotalPoints != 4 || stats[1].Wins != 1 {
-		t.Errorf("S1 stats: want {S1, 4pts, 1 win}, got {%s, %d, %d}",
-			stats[1].SeasonName, stats[1].TotalPoints, stats[1].Wins)
+	if stats[1].SeasonName != "S1" || stats[1].TotalPoints != 4 || stats[1].Wins != 1 || stats[1].Position != 1 {
+		t.Errorf("S1 stats: want {S1, 4pts, 1 win, pos 1}, got {%s, %d, %d, pos %d}",
+			stats[1].SeasonName, stats[1].TotalPoints, stats[1].Wins, stats[1].Position)
 	}
 }
 
