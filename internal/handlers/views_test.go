@@ -10,7 +10,7 @@ import (
 	"jcg/internal/db"
 )
 
-func leaderboardTestHandler(t *testing.T) *Handler {
+func leaderboardTestHandler(t *testing.T, customTmpl ...*template.Template) *Handler {
 	t.Helper()
 	// Uses shared-cache DSN; tests must run serially (no t.Parallel).
 	database, err := db.Open("file::memory:?cache=shared&_foreign_keys=on")
@@ -26,14 +26,19 @@ func leaderboardTestHandler(t *testing.T) *Handler {
 	database.Exec(`INSERT INTO player_scores (result_id, player_id, placement, season_points)
 		VALUES (1, 1, 1, 4), (1, 2, 2, 2)`)
 
-	tmpl := template.Must(
-		template.New("").Funcs(template.FuncMap{
-			"add": func(a, b int) int { return a + b },
-		}).Parse(`
-			{{define "leaderboard"}}FULL:{{range .Rows}}{{.PlayerName}}={{.TotalPoints}};{{end}}{{end}}
-			{{define "leaderboard-table"}}TABLE:{{range .Rows}}{{.PlayerName}}={{.TotalPoints}};{{end}}{{end}}
-		`),
-	)
+	var tmpl *template.Template
+	if len(customTmpl) > 0 && customTmpl[0] != nil {
+		tmpl = customTmpl[0]
+	} else {
+		tmpl = template.Must(
+			template.New("").Funcs(template.FuncMap{
+				"add": func(a, b int) int { return a + b },
+			}).Parse(`
+				{{define "leaderboard"}}FULL:{{range .Rows}}{{.PlayerName}}={{.TotalPoints}};{{end}}{{end}}
+				{{define "leaderboard-table"}}TABLE:{{range .Rows}}{{.PlayerName}}={{.TotalPoints}};{{end}}{{end}}
+			`),
+		)
+	}
 	return New(database, tmpl)
 }
 
@@ -155,20 +160,6 @@ func TestLeaderboard_NegativeSeasonParam_Returns400(t *testing.T) {
 }
 
 func TestLeaderboard_GraphJSONIncludedInResponse(t *testing.T) {
-	// Uses shared-cache DSN; tests must run serially (no t.Parallel).
-	database, err := db.Open("file::memory:?cache=shared&_foreign_keys=on")
-	if err != nil {
-		t.Fatalf("open db: %v", err)
-	}
-	t.Cleanup(func() { database.Close() })
-
-	database.Exec(`INSERT INTO players (id, name) VALUES (1, 'Alice'), (2, 'Bob')`)
-	database.Exec(`INSERT INTO seasons (id, name) VALUES (1, 'Season 1')`)
-	database.Exec(`INSERT INTO games (id, title) VALUES (1, 'Wingspan')`)
-	database.Exec(`INSERT INTO game_results (id, season_id, game_id, game_number) VALUES (1, 1, 1, 1)`)
-	database.Exec(`INSERT INTO player_scores (result_id, player_id, placement, season_points)
-		VALUES (1, 1, 1, 4), (1, 2, 2, 2)`)
-
 	tmpl := template.Must(
 		template.New("").Funcs(template.FuncMap{
 			"add": func(a, b int) int { return a + b },
@@ -177,7 +168,7 @@ func TestLeaderboard_GraphJSONIncludedInResponse(t *testing.T) {
 			{{define "leaderboard-table"}}TABLE-GRAPH:{{.GraphJSON}}{{end}}
 		`),
 	)
-	h := New(database, tmpl)
+	h := leaderboardTestHandler(t, tmpl)
 
 	r := httptest.NewRequest("GET", "/?season=1", nil)
 	w := httptest.NewRecorder()

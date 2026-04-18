@@ -4,6 +4,7 @@
 <head>
   {{template "head" .}}
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"
+          integrity="sha384-NrKB+u6Ts6AtkIhwPixiKTzgSKNblyhlk0Sohlgar9UHUBzai/sgnNNWWd291xqt"
           crossorigin="anonymous"></script>
 </head>
 <body>
@@ -135,6 +136,7 @@
 </table>
 {{end}}
 
+{{/* graph data and chart always rendered, even when table is empty */}}
 <div style="margin-top: 2rem;">
   <script type="application/json" id="graph-data">{{.GraphJSON}}</script>
   <canvas id="points-graph" style="max-height: 300px;"></canvas>

@@ -37,7 +37,7 @@ func (h *Handler) Leaderboard(w http.ResponseWriter, r *http.Request) {
 
 	var rows []db.LeaderboardRow
 	var currentSeason db.Season
-	var graphJSON template.JS
+	graphJSON := template.JS("null")
 	if seasonID > 0 {
 		rows, err = db.Leaderboard(h.db, seasonID)
 		if err != nil {
