@@ -490,6 +490,14 @@ type PlayHistoryRow struct {
 	WinnerID   int64
 }
 
+// CumulativePointsRow is one data point in a player's running total for a season.
+type CumulativePointsRow struct {
+	GameNumber       int
+	PlayerID         int64
+	PlayerName       string
+	CumulativePoints int
+}
+
 // GamePlayHistory returns all sessions a given game title has been played, newest first.
 // Each row includes the session winner. Note: if two players tied for 1st place in a
 // session, that session will appear once per co-winner in the results. This is acceptable
@@ -517,6 +525,43 @@ func GamePlayHistory(db *sql.DB, gameID int64) ([]PlayHistoryRow, error) {
 		var r PlayHistoryRow
 		if err := rows.Scan(&r.ResultID, &r.GameNumber,
 			&r.SeasonID, &r.SeasonName, &r.WinnerID, &r.WinnerName); err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}
+
+// CumulativePoints returns the running cumulative season points for each player
+// at each game number within the season, ordered by game_number then player name.
+// Uses a SQLite window function (requires SQLite ≥ 3.25).
+func CumulativePoints(db *sql.DB, seasonID int64) ([]CumulativePointsRow, error) {
+	const q = `
+		SELECT
+			gr.game_number,
+			p.id,
+			p.name,
+			SUM(ps.season_points) OVER (
+				PARTITION BY p.id
+				ORDER BY gr.game_number
+				ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+			) AS cumulative_points
+		FROM player_scores ps
+		JOIN game_results gr ON gr.id = ps.result_id
+		JOIN players p ON p.id = ps.player_id
+		WHERE gr.season_id = ?
+		ORDER BY gr.game_number, p.name
+	`
+	rows, err := db.Query(q, seasonID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []CumulativePointsRow
+	for rows.Next() {
+		var r CumulativePointsRow
+		if err := rows.Scan(&r.GameNumber, &r.PlayerID, &r.PlayerName, &r.CumulativePoints); err != nil {
 			return nil, err
 		}
 		out = append(out, r)

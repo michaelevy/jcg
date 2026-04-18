@@ -1,6 +1,7 @@
 package db
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -475,5 +476,71 @@ func TestGamePlayHistory_ReturnsAllSessions(t *testing.T) {
 	}
 	if history[1].SeasonName != "S1" || history[1].WinnerName != "Alice" {
 		t.Errorf("second: want S1 winner Alice, got %s winner %s", history[1].SeasonName, history[1].WinnerName)
+	}
+}
+
+func TestCumulativePoints_RunningTotalsPerPlayer(t *testing.T) {
+	database, err := Open("file::memory:?cache=shared&_foreign_keys=on")
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	defer database.Close()
+
+	database.Exec(`INSERT INTO players (id, name) VALUES (1, 'Alice'), (2, 'Bob')`)
+	database.Exec(`INSERT INTO seasons (id, name) VALUES (1, 'S1')`)
+	database.Exec(`INSERT INTO games (id, title) VALUES (1, 'Wingspan'), (2, 'Catan')`)
+	// Game 1: Alice 4pts, Bob 2pts
+	// Game 2: Alice 2pts, Bob 4pts
+	database.Exec(`INSERT INTO game_results (id, season_id, game_id, game_number)
+		VALUES (1, 1, 1, 1), (2, 1, 2, 2)`)
+	database.Exec(`INSERT INTO player_scores (result_id, player_id, placement, season_points)
+		VALUES (1, 1, 1, 4), (1, 2, 2, 2),
+		       (2, 1, 2, 2), (2, 2, 1, 4)`)
+
+	rows, err := CumulativePoints(database, 1)
+	if err != nil {
+		t.Fatalf("CumulativePoints: %v", err)
+	}
+	// Expect 4 rows: 2 players × 2 games
+	if len(rows) != 4 {
+		t.Fatalf("want 4 rows, got %d", len(rows))
+	}
+	// Rows ordered by game_number, then player name
+	// game 1: Alice cumulative=4, Bob cumulative=2
+	// game 2: Alice cumulative=6, Bob cumulative=6
+	byKey := map[string]int{}
+	for _, r := range rows {
+		key := r.PlayerName + ":" + fmt.Sprintf("%d", r.GameNumber)
+		byKey[key] = r.CumulativePoints
+	}
+	if byKey["Alice:1"] != 4 {
+		t.Errorf("Alice after game 1: want 4, got %d", byKey["Alice:1"])
+	}
+	if byKey["Bob:1"] != 2 {
+		t.Errorf("Bob after game 1: want 2, got %d", byKey["Bob:1"])
+	}
+	if byKey["Alice:2"] != 6 {
+		t.Errorf("Alice after game 2: want 6, got %d", byKey["Alice:2"])
+	}
+	if byKey["Bob:2"] != 6 {
+		t.Errorf("Bob after game 2: want 6, got %d", byKey["Bob:2"])
+	}
+}
+
+func TestCumulativePoints_EmptySeason_ReturnsEmpty(t *testing.T) {
+	database, err := Open("file::memory:?cache=shared&_foreign_keys=on")
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	defer database.Close()
+
+	database.Exec(`INSERT INTO seasons (id, name) VALUES (1, 'S1')`)
+
+	rows, err := CumulativePoints(database, 1)
+	if err != nil {
+		t.Fatalf("CumulativePoints: %v", err)
+	}
+	if len(rows) != 0 {
+		t.Errorf("want 0 rows for empty season, got %d", len(rows))
 	}
 }
