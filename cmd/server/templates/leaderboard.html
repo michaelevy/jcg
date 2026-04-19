@@ -38,26 +38,18 @@
     <div id="leaderboard-section">
       {{template "leaderboard-table" .}}
     </div>
+
+    {{/* Canvas lives outside the swap target so it persists across season changes.
+         Graph data is supplied by the leaderboard-table fragment via #graph-data. */}}
+    <div style="margin-top: 2rem;">
+      <canvas id="points-graph" style="max-height: 300px;"></canvas>
+    </div>
   </main>
 
   <script>
     var pointsChart = null;
 
-    function renderPointsGraph() {
-      var dataEl = document.getElementById('graph-data');
-      var canvas = document.getElementById('points-graph');
-      if (!dataEl || !canvas) return;
-
-      // Destroy previous instance before creating a new one (prevents memory leak on HTMX swap).
-      if (pointsChart) { pointsChart.destroy(); pointsChart = null; }
-
-      var rows = JSON.parse(dataEl.textContent);
-      if (!rows || rows.length === 0) {
-        canvas.style.display = 'none';
-        return;
-      }
-      canvas.style.display = '';
-
+    function buildChartData(rows) {
       var players = [];
       var gameNumbers = [];
       rows.forEach(function(r) {
@@ -81,19 +73,43 @@
         };
       });
 
-      pointsChart = new Chart(canvas, {
-        type: 'line',
-        data: {
-          labels: gameNumbers.map(function(g) { return 'Game ' + g; }),
-          datasets: datasets,
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { position: 'bottom' } },
-          scales: { y: { beginAtZero: true, title: { display: true, text: 'Points' } } },
-        },
-      });
+      return {
+        labels: gameNumbers.map(function(g) { return 'Game ' + g; }),
+        datasets: datasets,
+      };
+    }
+
+    function renderPointsGraph() {
+      var dataEl = document.getElementById('graph-data');
+      var canvas = document.getElementById('points-graph');
+      if (!dataEl || !canvas) return;
+
+      var rows = JSON.parse(dataEl.textContent);
+      var hasData = rows && rows.length > 0;
+      canvas.style.display = hasData ? '' : 'none';
+
+      if (!hasData) {
+        if (pointsChart) { pointsChart.destroy(); pointsChart = null; }
+        return;
+      }
+
+      var chartData = buildChartData(rows);
+
+      if (pointsChart) {
+        // Canvas persists — update data in-place so there's no resize/recreate flash.
+        pointsChart.data = chartData;
+        pointsChart.update();
+      } else {
+        pointsChart = new Chart(canvas, {
+          type: 'line',
+          data: chartData,
+          options: {
+            responsive: true,
+            plugins: { legend: { position: 'bottom' } },
+            scales: { y: { beginAtZero: true, title: { display: true, text: 'Points' } } },
+          },
+        });
+      }
     }
 
     document.addEventListener('DOMContentLoaded', renderPointsGraph);
@@ -146,9 +162,7 @@
 </table>
 {{end}}
 
-{{/* graph data and chart always rendered, even when table is empty */}}
-<div style="margin-top: 2rem;">
-  <script type="application/json" id="graph-data">{{.GraphJSON}}</script>
-  <canvas id="points-graph" style="height: 300px;"></canvas>
-</div>
+{{/* Graph data travels with the HTMX fragment; the canvas itself lives outside
+     the swap target in the outer leaderboard template. */}}
+<script type="application/json" id="graph-data">{{.GraphJSON}}</script>
 {{end}}
