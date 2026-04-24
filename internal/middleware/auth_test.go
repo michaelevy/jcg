@@ -116,3 +116,71 @@ func TestRequireAuth_ExpiredSession_RedirectsAndDeletesSession(t *testing.T) {
 		t.Error("inner handler should NOT have been called for expired session")
 	}
 }
+
+func TestSweepExpiredSessions_RemovesOnlyExpiredEntries(t *testing.T) {
+	t.Cleanup(func() { middleware.ResetStore() })
+
+	middleware.StoreTestSession("expired-id", "alice", time.Now().Add(-time.Hour))
+	middleware.StoreTestSession("valid-id", "bob", time.Now().Add(time.Hour))
+
+	middleware.SweepExpiredSessions()
+
+	// Expired session should not load into context after sweep.
+	var expiredUsername string
+	expiredReq := httptest.NewRequest("GET", "/", nil)
+	expiredReq.AddCookie(&http.Cookie{Name: "jcg_session", Value: "expired-id"})
+	middleware.LoadSession(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		expiredUsername = middleware.UsernameFromContext(r)
+	})).ServeHTTP(httptest.NewRecorder(), expiredReq)
+	if expiredUsername != "" {
+		t.Errorf("expired session should not load after sweep, got %q", expiredUsername)
+	}
+
+	// Valid session should still load.
+	var validUsername string
+	validReq := httptest.NewRequest("GET", "/", nil)
+	validReq.AddCookie(&http.Cookie{Name: "jcg_session", Value: "valid-id"})
+	middleware.LoadSession(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		validUsername = middleware.UsernameFromContext(r)
+	})).ServeHTTP(httptest.NewRecorder(), validReq)
+	if validUsername != "bob" {
+		t.Errorf("valid session should survive sweep, got %q", validUsername)
+	}
+}
+
+func TestCreateSession_SecureFlagOff_CookieNotSecure(t *testing.T) {
+	t.Cleanup(func() {
+		middleware.ResetStore()
+		middleware.SetSecure(false)
+	})
+
+	w := httptest.NewRecorder()
+	middleware.CreateSession(w, "alice")
+
+	cookies := w.Result().Cookies()
+	if len(cookies) == 0 {
+		t.Fatal("expected a session cookie to be set")
+	}
+	if cookies[0].Secure {
+		t.Error("expected Secure=false when secure flag is off")
+	}
+}
+
+func TestCreateSession_SecureFlagOn_CookieIsSecure(t *testing.T) {
+	t.Cleanup(func() {
+		middleware.ResetStore()
+		middleware.SetSecure(false)
+	})
+
+	middleware.SetSecure(true)
+	w := httptest.NewRecorder()
+	middleware.CreateSession(w, "alice")
+
+	cookies := w.Result().Cookies()
+	if len(cookies) == 0 {
+		t.Fatal("expected a session cookie to be set")
+	}
+	if !cookies[0].Secure {
+		t.Error("expected Secure=true when secure flag is on")
+	}
+}

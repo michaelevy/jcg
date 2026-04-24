@@ -23,7 +23,35 @@ type sessionEntry struct {
 }
 
 var store sync.Map // map[string]sessionEntry
-// TODO: add background expiry sweep to prevent unbounded memory growth
+
+var secureFlag bool
+
+// SetSecure controls whether the Secure attribute is set on session cookies.
+// Call with true at startup when serving over HTTPS.
+func SetSecure(v bool) { secureFlag = v }
+
+// SweepExpiredSessions removes all expired entries from the session store.
+// Called periodically by StartSessionSweep; also exported for direct use in tests.
+func SweepExpiredSessions() {
+	store.Range(func(key, value any) bool {
+		if time.Now().After(value.(sessionEntry).expires) {
+			store.Delete(key)
+		}
+		return true
+	})
+}
+
+// StartSessionSweep launches a background goroutine that calls SweepExpiredSessions
+// on the given interval. Call once at startup; runs for the lifetime of the process.
+func StartSessionSweep(interval time.Duration) {
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for range ticker.C {
+			SweepExpiredSessions()
+		}
+	}()
+}
 
 // CreateSession generates a session ID, stores it server-side, and sets the session cookie on w.
 func CreateSession(w http.ResponseWriter, username string) {
@@ -35,7 +63,6 @@ func CreateSession(w http.ResponseWriter, username string) {
 
 	store.Store(id, sessionEntry{username: username, expires: time.Now().Add(sessionTTL)})
 
-	// TODO: set Secure: true in production (currently HTTP-only dev environment)
 	http.SetCookie(w, &http.Cookie{
 		Name:     cookieName,
 		Value:    id,
@@ -43,6 +70,7 @@ func CreateSession(w http.ResponseWriter, username string) {
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   int(sessionTTL.Seconds()),
+		Secure:   secureFlag,
 	})
 }
 
