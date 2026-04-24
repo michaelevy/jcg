@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 	"jcg/internal/db"
@@ -37,6 +38,8 @@ func main() {
 	defer database.Close()
 
 	applySeed(database)
+	middleware.SetSecure(os.Getenv("JCG_SECURE_COOKIE") != "")
+	go middleware.StartSessionSweep(time.Hour)
 
 	// ParseFS loads templates: "head", "nav", "leaderboard" are reserved names; future templates must avoid naming collisions.
 	tmpl := template.Must(
