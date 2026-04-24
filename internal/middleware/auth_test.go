@@ -184,3 +184,60 @@ func TestCreateSession_SecureFlagOn_CookieIsSecure(t *testing.T) {
 		t.Error("expected Secure=true when secure flag is on")
 	}
 }
+
+func TestCreateSession_GeneratesNonEmptyCSRFToken(t *testing.T) {
+	t.Cleanup(func() { middleware.ResetStore() })
+
+	// Create a session and recover its cookie.
+	wSetup := httptest.NewRecorder()
+	middleware.CreateSession(wSetup, "alice")
+	cookie := wSetup.Result().Cookies()[0]
+
+	// LoadSession should inject a non-empty CSRF token into context.
+	var capturedToken string
+	req := httptest.NewRequest("GET", "/", nil)
+	req.AddCookie(cookie)
+	middleware.LoadSession(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		capturedToken = middleware.CSRFTokenFromContext(r)
+	})).ServeHTTP(httptest.NewRecorder(), req)
+
+	if capturedToken == "" {
+		t.Error("expected a non-empty CSRF token in context after LoadSession")
+	}
+}
+
+func TestRequireAuth_InjectsCSRFToken(t *testing.T) {
+	t.Cleanup(func() { middleware.ResetStore() })
+
+	wSetup := httptest.NewRecorder()
+	middleware.CreateSession(wSetup, "alice")
+	cookie := wSetup.Result().Cookies()[0]
+
+	var capturedToken string
+	req := httptest.NewRequest("GET", "/enter", nil)
+	req.AddCookie(cookie)
+	middleware.RequireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		capturedToken = middleware.CSRFTokenFromContext(r)
+	})).ServeHTTP(httptest.NewRecorder(), req)
+
+	if capturedToken == "" {
+		t.Error("expected a non-empty CSRF token in context after RequireAuth")
+	}
+}
+
+func TestStoreTestCSRFSession_TokenRoundtrips(t *testing.T) {
+	t.Cleanup(func() { middleware.ResetStore() })
+
+	middleware.StoreTestCSRFSession("my-id", "bob", "known-token", time.Now().Add(time.Hour))
+
+	var capturedToken string
+	req := httptest.NewRequest("GET", "/", nil)
+	req.AddCookie(&http.Cookie{Name: "jcg_session", Value: "my-id"})
+	middleware.LoadSession(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		capturedToken = middleware.CSRFTokenFromContext(r)
+	})).ServeHTTP(httptest.NewRecorder(), req)
+
+	if capturedToken != "known-token" {
+		t.Errorf("expected CSRF token %q, got %q", "known-token", capturedToken)
+	}
+}
