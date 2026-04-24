@@ -38,8 +38,8 @@ func main() {
 	defer database.Close()
 
 	applySeed(database)
-	middleware.SetSecure(os.Getenv("JCG_SECURE_COOKIE") != "")
-	go middleware.StartSessionSweep(time.Hour)
+	middleware.SetSecure(os.Getenv("JCG_SECURE_COOKIE") == "true")
+	middleware.StartSessionSweep(time.Hour)
 
 	// ParseFS loads templates: "head", "nav", "leaderboard" are reserved names; future templates must avoid naming collisions.
 	tmpl := template.Must(

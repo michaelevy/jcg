@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -24,17 +25,18 @@ type sessionEntry struct {
 
 var store sync.Map // map[string]sessionEntry
 
-var secureFlag bool
+var secureFlag atomic.Bool
 
 // SetSecure controls whether the Secure attribute is set on session cookies.
 // Call with true at startup when serving over HTTPS.
-func SetSecure(v bool) { secureFlag = v }
+func SetSecure(v bool) { secureFlag.Store(v) }
 
 // SweepExpiredSessions removes all expired entries from the session store.
 // Called periodically by StartSessionSweep; also exported for direct use in tests.
 func SweepExpiredSessions() {
+	now := time.Now()
 	store.Range(func(key, value any) bool {
-		if time.Now().After(value.(sessionEntry).expires) {
+		if now.After(value.(sessionEntry).expires) {
 			store.Delete(key)
 		}
 		return true
@@ -70,7 +72,7 @@ func CreateSession(w http.ResponseWriter, username string) {
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   int(sessionTTL.Seconds()),
-		Secure:   secureFlag,
+		Secure:   secureFlag.Load(),
 	})
 }
 

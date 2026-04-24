@@ -45,5 +45,3 @@ Last verified: 2026-04-19
 
 ## Known TODOs
 - CSRF token protection on POST /login, POST /logout
-- Session store background expiry sweep (currently unbounded sync.Map)
-- Secure cookie flag for production (currently HTTP-only, no Secure)
