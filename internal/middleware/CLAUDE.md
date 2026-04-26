@@ -1,12 +1,12 @@
 # Middleware Package
 
-Last verified: 2026-04-17
+Last verified: 2026-04-21
 
 ## Purpose
 Session management and route protection. In-memory session store backs cookie-based auth.
 
 ## Contracts
-- **Exposes**: `CreateSession(w, username)`, `DeleteSession(w, r)`, `RequireAuth(next) http.Handler`, `UsernameFromContext(r) string`, `InjectUsername(ctx, username)` (test only), `SetSecure(v bool)`, `SweepExpiredSessions()`, `StartSessionSweep(interval)`, `StoreTestSession`/`ResetStore` (test only)
+- **Exposes**: `CreateSession(w, username)`, `DeleteSession(w, r)`, `RequireAuth(next) http.Handler`, `UsernameFromContext(r) string`, `CSRFTokenFromContext(r) string`, `InjectUsername(ctx, username)` (test only), `SetSecure(v bool)`, `SweepExpiredSessions()`, `StartSessionSweep(interval)`, `StoreTestSession`, `StoreTestCSRFSession`, `ResetStore` (test only)
 - **Guarantees**: Sessions expire after 24h. RequireAuth redirects to /login on missing/expired session. Session IDs are 32 bytes from crypto/rand, base64url-encoded. Cookie is HttpOnly + SameSite=Lax.
 - **Expects**: Nothing external; self-contained with sync.Map store.
 
@@ -20,5 +20,6 @@ Session management and route protection. In-memory session store backs cookie-ba
 
 ## Invariants
 - Cookie name is always `jcg_session`
-- CtxKeyUsername is the only context key; typed as `contextKey` string to avoid collisions
+- CtxKeyUsername and CtxKeyCSRFToken are the context keys; typed as `contextKey` string to avoid collisions
+- Each session stores a per-session CSRF token (32 bytes from crypto/rand, base64url-encoded) generated at session creation
 - Expired sessions are deleted on access (lazy cleanup) and swept periodically in background via `StartSessionSweep`

@@ -12,9 +12,12 @@ import (
 
 type contextKey string
 
-// CtxKeyUsername is the context key for the authenticated username.
-const CtxKeyUsername contextKey = "username"
-const CtxKeyCSRFToken contextKey = "csrf_token"
+const (
+	// CtxKeyUsername is the context key for the authenticated username.
+	CtxKeyUsername contextKey = "username"
+	// CtxKeyCSRFToken is the context key for the per-session CSRF token.
+	CtxKeyCSRFToken contextKey = "csrf_token"
+)
 
 const cookieName = "jcg_session"
 const sessionTTL = 24 * time.Hour
