@@ -352,3 +352,99 @@ func TestValidateAndConsumePreSession_SecondCall_ReturnsFalse(t *testing.T) {
 		t.Error("expected second ValidateAndConsumePreSession to return false (replay attack)")
 	}
 }
+
+func TestRequireCSRF_NoToken_Returns403(t *testing.T) {
+	t.Cleanup(func() { middleware.ResetStore() })
+
+	middleware.StoreTestCSRFSession("sess-id", "alice", "real-token", time.Now().Add(time.Hour))
+
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("reached"))
+	})
+	handler := middleware.LoadSession(middleware.RequireCSRF(inner))
+
+	// POST with no csrf_token field and no X-CSRF-Token header.
+	req := httptest.NewRequest("POST", "/enter", strings.NewReader(""))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(&http.Cookie{Name: "jcg_session", Value: "sess-id"})
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("want 403, got %d", w.Code)
+	}
+	if strings.Contains(w.Body.String(), "reached") {
+		t.Error("inner handler should NOT be reached on missing CSRF token")
+	}
+}
+
+func TestRequireCSRF_WrongToken_Returns403(t *testing.T) {
+	t.Cleanup(func() { middleware.ResetStore() })
+
+	middleware.StoreTestCSRFSession("sess-id", "alice", "real-token", time.Now().Add(time.Hour))
+
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("reached"))
+	})
+	handler := middleware.LoadSession(middleware.RequireCSRF(inner))
+
+	req := httptest.NewRequest("POST", "/enter", strings.NewReader("csrf_token=wrong-token"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(&http.Cookie{Name: "jcg_session", Value: "sess-id"})
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("want 403, got %d", w.Code)
+	}
+}
+
+func TestRequireCSRF_CorrectFormToken_PassesThrough(t *testing.T) {
+	t.Cleanup(func() { middleware.ResetStore() })
+
+	middleware.StoreTestCSRFSession("sess-id", "alice", "real-token", time.Now().Add(time.Hour))
+
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("reached"))
+	})
+	handler := middleware.LoadSession(middleware.RequireCSRF(inner))
+
+	req := httptest.NewRequest("POST", "/enter", strings.NewReader("csrf_token=real-token"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(&http.Cookie{Name: "jcg_session", Value: "sess-id"})
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("want 200, got %d", w.Code)
+	}
+	if !strings.Contains(w.Body.String(), "reached") {
+		t.Error("inner handler should be reached with correct CSRF token")
+	}
+}
+
+func TestRequireCSRF_CorrectHeader_PassesThrough(t *testing.T) {
+	t.Cleanup(func() { middleware.ResetStore() })
+
+	middleware.StoreTestCSRFSession("sess-id", "alice", "real-token", time.Now().Add(time.Hour))
+
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("reached"))
+	})
+	handler := middleware.LoadSession(middleware.RequireCSRF(inner))
+
+	// HTMX-style: token in header, no body token.
+	req := httptest.NewRequest("POST", "/enter/season", strings.NewReader("season_name=Spring"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("X-CSRF-Token", "real-token")
+	req.AddCookie(&http.Cookie{Name: "jcg_session", Value: "sess-id"})
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("want 200, got %d", w.Code)
+	}
+	if !strings.Contains(w.Body.String(), "reached") {
+		t.Error("inner handler should be reached with correct X-CSRF-Token header")
+	}
+}

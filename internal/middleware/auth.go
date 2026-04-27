@@ -231,6 +231,30 @@ func RequireAuth(next http.Handler) http.Handler {
 	})
 }
 
+// RequireCSRF validates the CSRF token on the incoming request against the token
+// stored in context by LoadSession or RequireAuth. Checks the X-CSRF-Token header
+// first (used by HTMX), then falls back to the csrf_token form field.
+// Returns 403 if the token is missing or does not match.
+func RequireCSRF(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		contextToken := CSRFTokenFromContext(r)
+
+		var requestToken string
+		if h := r.Header.Get("X-CSRF-Token"); h != "" {
+			requestToken = h
+		} else {
+			requestToken = r.FormValue("csrf_token")
+		}
+
+		if subtle.ConstantTimeCompare([]byte(contextToken), []byte(requestToken)) != 1 {
+			http.Error(w, "invalid CSRF token", http.StatusForbidden)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 // StoreTestSession inserts a session into the store for testing purposes.
 // Only exported for testing; not for production use.
 func StoreTestSession(id string, username string, expires time.Time) {
