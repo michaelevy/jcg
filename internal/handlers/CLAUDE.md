@@ -1,6 +1,6 @@
 # Handlers Package
 
-Last verified: 2026-04-19
+Last verified: 2026-04-27 (Phase 5 complete: CSRF token auto-injection in render())
 
 ## Purpose
 HTTP handler layer. Translates requests into DB calls and template renders. No business logic beyond input parsing.
@@ -23,5 +23,6 @@ HTTP handler layer. Translates requests into DB calls and template renders. No b
 - Leaderboard passes GraphJSON (CumulativePoints as JSON) to template for Chart.js rendering
 
 ## Gotchas
-- render() logs template errors and returns 500; does not panic
+- render() signature is `render(w, r, name, data map[string]any)`; auto-injects `CSRFToken` from request context unless caller already set it. All call sites must pass the request and a map (not a struct) so templates can read `.CSRFToken`.
 - LoginSubmit always runs bcrypt.CompareHashAndPassword even on missing user (timing attack mitigation)
+- LoginPage issues a pre-session CSRF token via `middleware.CreatePreSessionToken`; LoginSubmit validates it via `ValidateAndConsumePreSession` before checking credentials

@@ -1,6 +1,6 @@
 # JCG - Board Game Score Tracker
 
-Last verified: 2026-04-19
+Last verified: 2026-04-27 (Phase 5 complete: CSRF/secure-cookie/session-sweep security hardening)
 
 ## Tech Stack
 - Language: Go 1.25.5
@@ -14,6 +14,10 @@ Last verified: 2026-04-19
 - `go run ./cmd/seed` - Seed users/players into DB
 - `go test ./...` - Run all tests
 - `docker compose up --build` - Full containerized run
+
+## Environment
+- `JCG_SECURE_COOKIE=true` - Set on session cookie in production (HTTPS); defaults to off so local HTTP works
+- `JCG_SEED_PLAYERS`, `JCG_SEED_USERS` - Read by `applySeed` on startup (comma-separated; users are `name:password`)
 
 ## Project Structure
 - `cmd/server/` - HTTP entrypoint, embedded templates + static assets
@@ -43,5 +47,9 @@ Last verified: 2026-04-19
 - Schema changes: `internal/db/schema.sql` (embedded, applied on Open())
 - Templates: `cmd/server/templates/` (embedded at compile time)
 
+## Security
+- CSRF: per-session token issued on login, validated on POST /enter, POST /enter/season, POST /logout via `middleware.RequireCSRF`. Pre-session token (cookie + form) protects POST /login. Tokens are auto-injected into templates by `Handler.render` from request context; HTMX requests pick up the token via the `htmx:configRequest` listener reading the `csrf-token` meta tag.
+- Sessions: 24h TTL, deleted on access if expired, swept every hour by `middleware.StartSessionSweep`. Cookie is HttpOnly + SameSite=Lax; `Secure` flag toggled by `JCG_SECURE_COOKIE`.
+
 ## Known TODOs
-- CSRF token protection on POST /login, POST /logout
+- (none open from initial security hardening; revisit if multi-instance deployment is needed - sync.Map session store is single-process only)
