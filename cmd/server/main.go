@@ -63,14 +63,13 @@ func main() {
 	mux.Handle("GET /game-results/{id}", middleware.LoadSession(http.HandlerFunc(h.GameResultDetail)))
 
 	mux.HandleFunc("GET /login", h.LoginPage)
-	mux.HandleFunc("POST /login", h.LoginSubmit)
-	// TODO: add CSRF token protection before production deployment
-	mux.HandleFunc("POST /logout", h.Logout)
+	mux.Handle("POST /login", middleware.LoadSession(middleware.RequireCSRF(http.HandlerFunc(h.LoginSubmit))))
+	mux.Handle("POST /logout", middleware.LoadSession(middleware.RequireCSRF(http.HandlerFunc(h.Logout))))
 
 	mux.Handle("GET /enter", middleware.RequireAuth(http.HandlerFunc(h.EntryPage)))
-	mux.Handle("POST /enter", middleware.RequireAuth(http.HandlerFunc(h.EntrySubmit)))
+	mux.Handle("POST /enter", middleware.RequireAuth(middleware.RequireCSRF(http.HandlerFunc(h.EntrySubmit))))
 	mux.Handle("GET /enter/next-game-number", middleware.RequireAuth(http.HandlerFunc(h.NextGameNumber)))
-	mux.Handle("POST /enter/season", middleware.RequireAuth(http.HandlerFunc(h.CreateSeason)))
+	mux.Handle("POST /enter/season", middleware.RequireAuth(middleware.RequireCSRF(http.HandlerFunc(h.CreateSeason))))
 
 	log.Printf("listening on %s", *addr)
 	if err := http.ListenAndServe(*addr, mux); err != nil {
