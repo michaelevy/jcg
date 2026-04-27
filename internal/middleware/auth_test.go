@@ -353,6 +353,29 @@ func TestValidateAndConsumePreSession_SecondCall_ReturnsFalse(t *testing.T) {
 	}
 }
 
+func TestRequireCSRF_NoContext_Returns403(t *testing.T) {
+	t.Cleanup(func() { middleware.ResetStore() })
+
+	// Don't create any session; context token will be empty
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("reached"))
+	})
+	handler := middleware.RequireCSRF(inner)
+
+	// POST with no cookie, no csrf_token field, no X-CSRF-Token header
+	req := httptest.NewRequest("POST", "/enter", strings.NewReader(""))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("want 403, got %d", w.Code)
+	}
+	if strings.Contains(w.Body.String(), "reached") {
+		t.Error("inner handler should NOT be reached with no context token")
+	}
+}
+
 func TestRequireCSRF_NoToken_Returns403(t *testing.T) {
 	t.Cleanup(func() { middleware.ResetStore() })
 

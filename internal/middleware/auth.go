@@ -246,6 +246,11 @@ func RequireCSRF(next http.Handler) http.Handler {
 			requestToken = r.FormValue("csrf_token")
 		}
 
+		if contextToken == "" || requestToken == "" {
+			http.Error(w, "invalid CSRF token", http.StatusForbidden)
+			return
+		}
+
 		if subtle.ConstantTimeCompare([]byte(contextToken), []byte(requestToken)) != 1 {
 			http.Error(w, "invalid CSRF token", http.StatusForbidden)
 			return
