@@ -6,6 +6,15 @@
         integrity="sha384-/TgkGk7p307TH7EXJDuUlgG3Ce1UVolAOFopFekQkkXihi5u/6OCvVKyz1W+idaz"
         crossorigin="anonymous"></script>
 <link rel="stylesheet" href="/static/style.css">
+<meta name="csrf-token" content="{{.CSRFToken}}">
+<script>
+  document.addEventListener('htmx:configRequest', function(evt) {
+    var meta = document.querySelector('meta[name="csrf-token"]');
+    if (meta) {
+      evt.detail.headers['X-CSRF-Token'] = meta.getAttribute('content');
+    }
+  });
+</script>
 {{end}}
 
 {{define "nav"}}
@@ -15,6 +24,7 @@
     {{if .Username}}
       <span class="nav-user">{{.Username}}</span>
       <form method="POST" action="/logout" style="display:inline">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
         <button type="submit" class="btn-link">Logout</button>
       </form>
     {{else}}

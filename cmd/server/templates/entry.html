@@ -8,6 +8,7 @@
     <h1>Record Game Result</h1>
 
     <form method="POST" action="/enter" class="form-narrow">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
 
       <label for="season_id">Season</label>
       <select id="season_id" name="season_id" required
