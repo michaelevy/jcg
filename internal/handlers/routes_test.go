@@ -41,8 +41,8 @@ func TestPostLoginWithMiddlewareChain(t *testing.T) {
 	preSessionCookie := wSetup.Result().Cookies()[0]
 
 	// Apply the middleware chain from main.go:
-	// mux.Handle("POST /login", middleware.LoadSession(middleware.RequireCSRF(http.HandlerFunc(h.LoginSubmit))))
-	handler := middleware.LoadSession(middleware.RequireCSRF(http.HandlerFunc(h.LoginSubmit)))
+	// mux.Handle("POST /login", middleware.LoadSession(http.HandlerFunc(h.LoginSubmit)))
+	handler := middleware.LoadSession(http.HandlerFunc(h.LoginSubmit))
 
 	// POST to login with the pre-session cookie and CSRF token
 	form := strings.NewReader("username=alice&password=hunter2&csrf_token=" + csrfToken)
@@ -134,5 +134,10 @@ func TestPostLogoutWithWrongCSRFToken(t *testing.T) {
 
 	if w.Code != http.StatusForbidden {
 		t.Errorf("POST /logout with wrong CSRF token should return 403, got %d", w.Code)
+	}
+
+	// Verify the inner Logout handler was NOT reached by checking for the error message
+	if !strings.Contains(w.Body.String(), "invalid CSRF token") {
+		t.Error("response should contain 'invalid CSRF token' error message from RequireCSRF")
 	}
 }
