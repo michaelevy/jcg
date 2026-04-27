@@ -10,6 +10,7 @@
       <p class="error">{{.Error}}</p>
     {{end}}
     <form method="POST" action="/login" class="form-narrow">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
       <label for="username">Username</label>
       <input id="username" name="username" type="text" required autofocus>
 

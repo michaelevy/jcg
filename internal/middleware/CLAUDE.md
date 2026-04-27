@@ -1,12 +1,12 @@
 # Middleware Package
 
-Last verified: 2026-04-21
+Last verified: 2026-04-21 (Phase 3 complete: pre-session CSRF tokens)
 
 ## Purpose
 Session management and route protection. In-memory session store backs cookie-based auth.
 
 ## Contracts
-- **Exposes**: `CreateSession(w, username)`, `DeleteSession(w, r)`, `RequireAuth(next) http.Handler`, `UsernameFromContext(r) string`, `CSRFTokenFromContext(r) string`, `InjectUsername(ctx, username)` (test only), `SetSecure(v bool)`, `SweepExpiredSessions()`, `StartSessionSweep(interval)`, `StoreTestSession`, `StoreTestCSRFSession`, `ResetStore` (test only)
+- **Exposes**: `CreateSession(w, username)`, `DeleteSession(w, r)`, `CreatePreSessionToken(w) string`, `ValidateAndConsumePreSession(r) bool`, `RequireAuth(next) http.Handler`, `UsernameFromContext(r) string`, `CSRFTokenFromContext(r) string`, `InjectUsername(ctx, username)` (test only), `SetSecure(v bool)`, `SweepExpiredSessions()`, `StartSessionSweep(interval)`, `StoreTestSession`, `StoreTestCSRFSession`, `ResetStore` (test only)
 - **Guarantees**: Sessions expire after 24h. RequireAuth redirects to /login on missing/expired session. Session IDs are 32 bytes from crypto/rand, base64url-encoded. Cookie is HttpOnly + SameSite=Lax.
 - **Expects**: Nothing external; self-contained with sync.Map store.
 

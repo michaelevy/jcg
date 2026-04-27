@@ -41,9 +41,11 @@ func (h *Handler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 
 	// Reject if user doesn't exist (err != nil) OR password doesn't match
 	if err != nil || pwErr != nil {
+		token := middleware.CreatePreSessionToken(w)
 		h.render(w, "login", map[string]any{
-			"Title": "Login",
-			"Error": "Invalid username or password.",
+			"Title":     "Login",
+			"Error":     "Invalid username or password.",
+			"CSRFToken": token,
 		})
 		return
 	}

@@ -323,3 +323,32 @@ func TestValidateAndConsumePreSession_FullSession_ReturnsFalse(t *testing.T) {
 		t.Error("expected ValidateAndConsumePreSession to return false for a full session")
 	}
 }
+
+func TestValidateAndConsumePreSession_SecondCall_ReturnsFalse(t *testing.T) {
+	t.Cleanup(func() { middleware.ResetStore() })
+
+	// Create a pre-session and get the token
+	wSetup := httptest.NewRecorder()
+	token := middleware.CreatePreSessionToken(wSetup)
+	cookie := wSetup.Result().Cookies()[0]
+
+	// First call with correct token should return true
+	body1 := strings.NewReader("csrf_token=" + token)
+	req1 := httptest.NewRequest("POST", "/login", body1)
+	req1.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req1.AddCookie(cookie)
+
+	if !middleware.ValidateAndConsumePreSession(req1) {
+		t.Error("expected first ValidateAndConsumePreSession to return true for correct token")
+	}
+
+	// Second call with the same cookie+token should return false (entry consumed)
+	body2 := strings.NewReader("csrf_token=" + token)
+	req2 := httptest.NewRequest("POST", "/login", body2)
+	req2.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req2.AddCookie(cookie)
+
+	if middleware.ValidateAndConsumePreSession(req2) {
+		t.Error("expected second ValidateAndConsumePreSession to return false (replay attack)")
+	}
+}
