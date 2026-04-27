@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/base64"
 	"net/http"
 	"sync"
@@ -21,6 +22,7 @@ const (
 
 const cookieName = "jcg_session"
 const sessionTTL = 24 * time.Hour
+const preSessionTTL = time.Hour
 
 type sessionEntry struct {
 	username  string
@@ -97,6 +99,68 @@ func DeleteSession(w http.ResponseWriter, r *http.Request) {
 		Path:   "/",
 		MaxAge: -1,
 	})
+}
+
+// CreatePreSessionToken creates a short-lived, unauthenticated session entry solely
+// to carry a CSRF token into POST /login before a real session exists.
+// Sets the session cookie and returns the CSRF token to embed in the login form.
+func CreatePreSessionToken(w http.ResponseWriter) string {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		panic(err)
+	}
+	id := base64.URLEncoding.EncodeToString(b)
+
+	cb := make([]byte, 32)
+	if _, err := rand.Read(cb); err != nil {
+		panic(err)
+	}
+	csrfToken := base64.URLEncoding.EncodeToString(cb)
+
+	store.Store(id, sessionEntry{
+		username:  "",
+		csrfToken: csrfToken,
+		expires:   time.Now().Add(preSessionTTL),
+	})
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     cookieName,
+		Value:    id,
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   int(preSessionTTL.Seconds()),
+		Secure:   secureFlag.Load(),
+	})
+
+	return csrfToken
+}
+
+// ValidateAndConsumePreSession checks the CSRF token submitted with the login form
+// against the pre-session entry, deletes the entry (preventing replay), and returns
+// whether the token was valid. Returns false if there is no pre-session cookie,
+// if the entry is not a pre-session (non-empty username), or if the token mismatches.
+func ValidateAndConsumePreSession(r *http.Request) bool {
+	cookie, err := r.Cookie(cookieName)
+	if err != nil {
+		return false
+	}
+
+	val, ok := store.Load(cookie.Value)
+	if !ok {
+		return false
+	}
+
+	entry := val.(sessionEntry)
+	if entry.username != "" {
+		return false
+	}
+
+	// Delete regardless of token match to prevent replay attacks.
+	store.Delete(cookie.Value)
+
+	formToken := r.FormValue("csrf_token")
+	return subtle.ConstantTimeCompare([]byte(entry.csrfToken), []byte(formToken)) == 1
 }
 
 // UsernameFromContext returns the authenticated username injected by RequireAuth,

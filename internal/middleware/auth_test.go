@@ -241,3 +241,85 @@ func TestStoreTestCSRFSession_TokenRoundtrips(t *testing.T) {
 		t.Errorf("expected CSRF token %q, got %q", "known-token", capturedToken)
 	}
 }
+
+func TestCreatePreSessionToken_SetsCookieAndReturnsToken(t *testing.T) {
+	t.Cleanup(func() { middleware.ResetStore() })
+
+	w := httptest.NewRecorder()
+	token := middleware.CreatePreSessionToken(w)
+
+	if token == "" {
+		t.Error("expected a non-empty CSRF token")
+	}
+	cookies := w.Result().Cookies()
+	if len(cookies) == 0 {
+		t.Fatal("expected a session cookie to be set")
+	}
+	if cookies[0].Name != "jcg_session" {
+		t.Errorf("expected cookie name jcg_session, got %q", cookies[0].Name)
+	}
+}
+
+func TestValidateAndConsumePreSession_CorrectToken_ReturnsTrue(t *testing.T) {
+	t.Cleanup(func() { middleware.ResetStore() })
+
+	// Create a pre-session and capture the cookie + token.
+	wSetup := httptest.NewRecorder()
+	token := middleware.CreatePreSessionToken(wSetup)
+	cookie := wSetup.Result().Cookies()[0]
+
+	// Submit with the correct token in the form body.
+	body := strings.NewReader("csrf_token=" + token)
+	req := httptest.NewRequest("POST", "/login", body)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(cookie)
+
+	if !middleware.ValidateAndConsumePreSession(req) {
+		t.Error("expected ValidateAndConsumePreSession to return true for correct token")
+	}
+}
+
+func TestValidateAndConsumePreSession_WrongToken_ReturnsFalse(t *testing.T) {
+	t.Cleanup(func() { middleware.ResetStore() })
+
+	wSetup := httptest.NewRecorder()
+	middleware.CreatePreSessionToken(wSetup)
+	cookie := wSetup.Result().Cookies()[0]
+
+	body := strings.NewReader("csrf_token=wrong-token")
+	req := httptest.NewRequest("POST", "/login", body)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(cookie)
+
+	if middleware.ValidateAndConsumePreSession(req) {
+		t.Error("expected ValidateAndConsumePreSession to return false for wrong token")
+	}
+}
+
+func TestValidateAndConsumePreSession_NoSession_ReturnsFalse(t *testing.T) {
+	t.Cleanup(func() { middleware.ResetStore() })
+
+	body := strings.NewReader("csrf_token=anything")
+	req := httptest.NewRequest("POST", "/login", body)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	if middleware.ValidateAndConsumePreSession(req) {
+		t.Error("expected ValidateAndConsumePreSession to return false with no session cookie")
+	}
+}
+
+func TestValidateAndConsumePreSession_FullSession_ReturnsFalse(t *testing.T) {
+	t.Cleanup(func() { middleware.ResetStore() })
+
+	// A full session (non-empty username) should NOT be accepted as a pre-session.
+	middleware.StoreTestCSRFSession("real-id", "alice", "some-token", time.Now().Add(time.Hour))
+
+	body := strings.NewReader("csrf_token=some-token")
+	req := httptest.NewRequest("POST", "/login", body)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(&http.Cookie{Name: "jcg_session", Value: "real-id"})
+
+	if middleware.ValidateAndConsumePreSession(req) {
+		t.Error("expected ValidateAndConsumePreSession to return false for a full session")
+	}
+}
