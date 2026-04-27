@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"html/template"
 	"net/http"
 	"net/http/httptest"
@@ -31,7 +32,7 @@ func entryTestHandler(t *testing.T) *Handler {
 	}
 
 	tmpl := template.Must(template.New("root").Parse(`
-		{{define "entry"}}ENTRY{{end}}
+		{{define "entry"}}<form method="POST"><input type="hidden" name="csrf_token" value="{{.CSRFToken}}">ENTRY</form>{{end}}
 		{{define "season-options"}}{{range .Seasons}}<option value="{{.ID}}">{{.Name}}</option>{{end}}{{end}}
 		{{define "home"}}HOME{{end}}
 	`))
@@ -211,5 +212,31 @@ func TestCreateSeason_CreatesSeasonAndReturnsOptions(t *testing.T) {
 	body := w.Body.String()
 	if !strings.Contains(body, "Season 1") || !strings.Contains(body, "Season 2") {
 		t.Errorf("want both seasons in options fragment, got: %s", body)
+	}
+}
+
+func TestEntryPage_EmbedsCSRFTokenFromContext(t *testing.T) {
+	t.Cleanup(func() { middleware.ResetStore() })
+	h := entryTestHandler(t)
+
+	// Create a request with CSRF token injected into context via middleware
+	expectedToken := "test-csrf-token-value"
+	r := httptest.NewRequest("GET", "/enter", nil)
+	r = r.WithContext(middleware.InjectUsername(r.Context(), "admin"))
+	ctx := context.WithValue(r.Context(), middleware.CtxKeyCSRFToken, expectedToken)
+	r = r.WithContext(ctx)
+
+	w := httptest.NewRecorder()
+
+	h.EntryPage(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("want 200, got %d", w.Code)
+	}
+
+	body := w.Body.String()
+	expectedHidden := `name="csrf_token" value="` + expectedToken + `"`
+	if !strings.Contains(body, expectedHidden) {
+		t.Errorf("want hidden field with csrf_token=%s in body, got: %s", expectedToken, body)
 	}
 }

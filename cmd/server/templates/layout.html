@@ -6,7 +6,7 @@
         integrity="sha384-/TgkGk7p307TH7EXJDuUlgG3Ce1UVolAOFopFekQkkXihi5u/6OCvVKyz1W+idaz"
         crossorigin="anonymous"></script>
 <link rel="stylesheet" href="/static/style.css">
-<meta name="csrf-token" content="{{.CSRFToken}}">
+{{if .CSRFToken}}<meta name="csrf-token" content="{{.CSRFToken}}">
 <script>
   document.addEventListener('htmx:configRequest', function(evt) {
     var meta = document.querySelector('meta[name="csrf-token"]');
@@ -15,7 +15,7 @@
     }
   });
 </script>
-{{end}}
+{{end}}{{end}}
 
 {{define "nav"}}
 <nav>
