@@ -63,7 +63,7 @@ func main() {
 	mux.Handle("GET /game-results/{id}", middleware.LoadSession(http.HandlerFunc(h.GameResultDetail)))
 
 	mux.HandleFunc("GET /login", h.LoginPage)
-	mux.Handle("POST /login", middleware.LoadSession(middleware.RequireCSRF(http.HandlerFunc(h.LoginSubmit))))
+	mux.Handle("POST /login", middleware.LoadSession(http.HandlerFunc(h.LoginSubmit)))
 	mux.Handle("POST /logout", middleware.LoadSession(middleware.RequireCSRF(http.HandlerFunc(h.Logout))))
 
 	mux.Handle("GET /enter", middleware.RequireAuth(http.HandlerFunc(h.EntryPage)))
