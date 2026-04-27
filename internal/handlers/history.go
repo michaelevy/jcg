@@ -58,8 +58,8 @@ func (h *Handler) SeasonGames(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Header.Get("HX-Request") == "true" {
-		h.render(w, "history-table", data)
+		h.render(w, r, "history-table", data)
 		return
 	}
-	h.render(w, "history", data)
+	h.render(w, r, "history", data)
 }

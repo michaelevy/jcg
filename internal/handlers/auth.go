@@ -13,7 +13,7 @@ const dummyHash = "$2a$10$yLcxRVJO5Cl5rBE5W1yE.eQj3rVFZ1P9VrBv0lDNM.FjRGJ/HKnhi"
 
 func (h *Handler) LoginPage(w http.ResponseWriter, r *http.Request) {
 	token := middleware.CreatePreSessionToken(w)
-	h.render(w, "login", map[string]any{
+	h.render(w, r, "login", map[string]any{
 		"Title":     "Login",
 		"CSRFToken": token,
 	})
@@ -42,7 +42,7 @@ func (h *Handler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 	// Reject if user doesn't exist (err != nil) OR password doesn't match
 	if err != nil || pwErr != nil {
 		token := middleware.CreatePreSessionToken(w)
-		h.render(w, "login", map[string]any{
+		h.render(w, r, "login", map[string]any{
 			"Title":     "Login",
 			"Error":     "Invalid username or password.",
 			"CSRFToken": token,

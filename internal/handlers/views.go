@@ -71,9 +71,9 @@ func (h *Handler) Leaderboard(w http.ResponseWriter, r *http.Request) {
 
 	// HTMX requests get only the table fragment (for the season selector swap).
 	if r.Header.Get("HX-Request") == "true" {
-		h.render(w, "leaderboard-table", data)
+		h.render(w, r, "leaderboard-table", data)
 		return
 	}
 
-	h.render(w, "leaderboard", data)
+	h.render(w, r, "leaderboard", data)
 }

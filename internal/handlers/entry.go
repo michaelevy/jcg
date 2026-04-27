@@ -43,7 +43,7 @@ func (h *Handler) EntryPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	h.render(w, "entry", map[string]any{
+	h.render(w, r, "entry", map[string]any{
 		"Title":            "Record Game Result",
 		"Username":         middleware.UsernameFromContext(r),
 		"Players":          players,
@@ -131,7 +131,7 @@ func (h *Handler) NextGameNumber(w http.ResponseWriter, r *http.Request) {
 	seasonIDStr := r.URL.Query().Get("season_id")
 	seasonID, err := strconv.ParseInt(seasonIDStr, 10, 64)
 	if err != nil || seasonID <= 0 {
-		h.render(w, "game-number-input", map[string]any{"NextGameNumber": 0})
+		h.render(w, r, "game-number-input", map[string]any{"NextGameNumber": 0})
 		return
 	}
 
@@ -141,7 +141,7 @@ func (h *Handler) NextGameNumber(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.render(w, "game-number-input", map[string]any{"NextGameNumber": next})
+	h.render(w, r, "game-number-input", map[string]any{"NextGameNumber": next})
 }
 
 // CreateSeason handles the HTMX inline season-creation sub-form.
@@ -166,7 +166,7 @@ func (h *Handler) CreateSeason(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Return just the <option> elements so HTMX can swap them into the <select>.
-	h.render(w, "season-options", map[string]any{
+	h.render(w, r, "season-options", map[string]any{
 		"Seasons":          seasons,
 		"SelectedSeasonID": id,
 	})

@@ -40,5 +40,5 @@ func (h *Handler) GameResultDetail(w http.ResponseWriter, r *http.Request) {
 		"Detail":      detail,
 		"PlayHistory": playHistory,
 	}
-	h.render(w, "game_result", data)
+	h.render(w, r, "game_result", data)
 }

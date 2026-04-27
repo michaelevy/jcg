@@ -47,5 +47,5 @@ func (h *Handler) PlayerProfile(w http.ResponseWriter, r *http.Request) {
 		"SeasonStats": seasonStats,
 		"GameHistory": gameHistory,
 	}
-	h.render(w, "player", data)
+	h.render(w, r, "player", data)
 }
