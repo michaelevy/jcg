@@ -12,12 +12,19 @@ import (
 const dummyHash = "$2a$10$yLcxRVJO5Cl5rBE5W1yE.eQj3rVFZ1P9VrBv0lDNM.FjRGJ/HKnhi"
 
 func (h *Handler) LoginPage(w http.ResponseWriter, r *http.Request) {
+	token := middleware.CreatePreSessionToken(w)
 	h.render(w, "login", map[string]any{
-		"Title": "Login",
+		"Title":     "Login",
+		"CSRFToken": token,
 	})
 }
 
 func (h *Handler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
+	if !middleware.ValidateAndConsumePreSession(r) {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 

@@ -43,6 +43,7 @@ func seedUser(t *testing.T, h *Handler, username, password string) {
 }
 
 func TestLoginPage_ReturnsOK(t *testing.T) {
+	t.Cleanup(func() { middleware.ResetStore() })
 	h := testHandler(t)
 	r := httptest.NewRequest("GET", "/login", nil)
 	w := httptest.NewRecorder()
@@ -58,12 +59,18 @@ func TestLoginPage_ReturnsOK(t *testing.T) {
 }
 
 func TestLoginSubmit_ValidCredentials_RedirectsAndSetsCookie(t *testing.T) {
+	t.Cleanup(func() { middleware.ResetStore() })
 	h := testHandler(t)
 	seedUser(t, h, "alice", "hunter2")
 
-	form := url.Values{"username": {"alice"}, "password": {"hunter2"}}
+	wSetup := httptest.NewRecorder()
+	token := middleware.CreatePreSessionToken(wSetup)
+	preSessionCookie := wSetup.Result().Cookies()[0]
+
+	form := url.Values{"username": {"alice"}, "password": {"hunter2"}, "csrf_token": {token}}
 	r := httptest.NewRequest("POST", "/login", strings.NewReader(form.Encode()))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	r.AddCookie(preSessionCookie)
 	w := httptest.NewRecorder()
 
 	h.LoginSubmit(w, r)
@@ -86,12 +93,18 @@ func TestLoginSubmit_ValidCredentials_RedirectsAndSetsCookie(t *testing.T) {
 }
 
 func TestLoginSubmit_WrongPassword_ReRendersWithError(t *testing.T) {
+	t.Cleanup(func() { middleware.ResetStore() })
 	h := testHandler(t)
 	seedUser(t, h, "alice", "hunter2")
 
-	form := url.Values{"username": {"alice"}, "password": {"wrong"}}
+	wSetup := httptest.NewRecorder()
+	token := middleware.CreatePreSessionToken(wSetup)
+	preSessionCookie := wSetup.Result().Cookies()[0]
+
+	form := url.Values{"username": {"alice"}, "password": {"wrong"}, "csrf_token": {token}}
 	r := httptest.NewRequest("POST", "/login", strings.NewReader(form.Encode()))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	r.AddCookie(preSessionCookie)
 	w := httptest.NewRecorder()
 
 	h.LoginSubmit(w, r)
@@ -105,11 +118,17 @@ func TestLoginSubmit_WrongPassword_ReRendersWithError(t *testing.T) {
 }
 
 func TestLoginSubmit_UnknownUser_ReRendersWithError(t *testing.T) {
+	t.Cleanup(func() { middleware.ResetStore() })
 	h := testHandler(t)
 
-	form := url.Values{"username": {"nobody"}, "password": {"anything"}}
+	wSetup := httptest.NewRecorder()
+	token := middleware.CreatePreSessionToken(wSetup)
+	preSessionCookie := wSetup.Result().Cookies()[0]
+
+	form := url.Values{"username": {"nobody"}, "password": {"anything"}, "csrf_token": {token}}
 	r := httptest.NewRequest("POST", "/login", strings.NewReader(form.Encode()))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	r.AddCookie(preSessionCookie)
 	w := httptest.NewRecorder()
 
 	h.LoginSubmit(w, r)
@@ -174,5 +193,69 @@ func TestLogout_RedirectsToLogin(t *testing.T) {
 	}
 	if wCheck.Header().Get("Location") != "/login" {
 		t.Errorf("subsequent request should redirect to /login, got %s", wCheck.Header().Get("Location"))
+	}
+}
+
+func TestLoginPage_SetsPreSessionCookie(t *testing.T) {
+	t.Cleanup(func() { middleware.ResetStore() })
+	h := testHandler(t)
+
+	req := httptest.NewRequest("GET", "/login", nil)
+	w := httptest.NewRecorder()
+	h.LoginPage(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("want 200, got %d", w.Code)
+	}
+	cookies := w.Result().Cookies()
+	if len(cookies) == 0 {
+		t.Error("expected a session cookie to be set by LoginPage")
+	}
+}
+
+func TestLoginSubmit_MissingCSRFToken_RedirectsToLogin(t *testing.T) {
+	t.Cleanup(func() { middleware.ResetStore() })
+	h := testHandler(t)
+
+	wSetup := httptest.NewRecorder()
+	middleware.CreatePreSessionToken(wSetup)
+	preSessionCookie := wSetup.Result().Cookies()[0]
+
+	// Submit with no csrf_token field.
+	body := strings.NewReader("username=admin&password=secret")
+	req := httptest.NewRequest("POST", "/login", body)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(preSessionCookie)
+	w := httptest.NewRecorder()
+	h.LoginSubmit(w, req)
+
+	if w.Code != http.StatusSeeOther {
+		t.Errorf("want 303 redirect to /login on CSRF failure, got %d", w.Code)
+	}
+	if w.Header().Get("Location") != "/login" {
+		t.Errorf("want redirect to /login, got %s", w.Header().Get("Location"))
+	}
+}
+
+func TestLoginSubmit_WrongCSRFToken_RedirectsToLogin(t *testing.T) {
+	t.Cleanup(func() { middleware.ResetStore() })
+	h := testHandler(t)
+
+	wSetup := httptest.NewRecorder()
+	middleware.CreatePreSessionToken(wSetup)
+	preSessionCookie := wSetup.Result().Cookies()[0]
+
+	body := strings.NewReader("username=admin&password=secret&csrf_token=wrong")
+	req := httptest.NewRequest("POST", "/login", body)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.AddCookie(preSessionCookie)
+	w := httptest.NewRecorder()
+	h.LoginSubmit(w, req)
+
+	if w.Code != http.StatusSeeOther {
+		t.Errorf("want 303 redirect to /login on CSRF failure, got %d", w.Code)
+	}
+	if w.Header().Get("Location") != "/login" {
+		t.Errorf("want redirect to /login, got %s", w.Header().Get("Location"))
 	}
 }
