@@ -12,6 +12,10 @@ import (
 const dummyHash = "$2a$10$yLcxRVJO5Cl5rBE5W1yE.eQj3rVFZ1P9VrBv0lDNM.FjRGJ/HKnhi"
 
 func (h *Handler) LoginPage(w http.ResponseWriter, r *http.Request) {
+	if middleware.UsernameFromContext(r) != "" {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
 	token := middleware.CreatePreSessionToken(w)
 	h.render(w, r, "login", map[string]any{
 		"Title":     "Login",

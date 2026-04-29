@@ -262,6 +262,7 @@ func RequireCSRF(next http.Handler) http.Handler {
 
 // StoreTestSession inserts a session into the store for testing purposes.
 // Only exported for testing; not for production use.
+// Deprecated: use StoreTestCSRFSession for new tests.
 func StoreTestSession(id string, username string, expires time.Time) {
 	store.Store(id, sessionEntry{username: username, expires: expires})
 }

@@ -259,3 +259,30 @@ func TestLoginSubmit_WrongCSRFToken_RedirectsToLogin(t *testing.T) {
 		t.Errorf("want redirect to /login, got %s", w.Header().Get("Location"))
 	}
 }
+
+func TestLoginPage_AlreadyAuthenticated_RedirectsToHome(t *testing.T) {
+	t.Cleanup(func() { middleware.ResetStore() })
+	h := testHandler(t)
+
+	// Create a real session for "alice"
+	wSession := httptest.NewRecorder()
+	middleware.CreateSession(wSession, "alice")
+	sessionCookie := wSession.Result().Cookies()[0]
+
+	// Hit GET /login through the LoadSession wrapper chain
+	req := httptest.NewRequest("GET", "/login", nil)
+	req.AddCookie(sessionCookie)
+	w := httptest.NewRecorder()
+
+	// Manually apply LoadSession to the handler (simulating the routing)
+	handler := middleware.LoadSession(http.HandlerFunc(h.LoginPage))
+	handler.ServeHTTP(w, req)
+
+	// Should redirect to home
+	if w.Code != http.StatusSeeOther {
+		t.Errorf("want 303, got %d", w.Code)
+	}
+	if w.Header().Get("Location") != "/" {
+		t.Errorf("want Location /, got %s", w.Header().Get("Location"))
+	}
+}
