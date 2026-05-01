@@ -108,8 +108,7 @@ func applySeed(database *sql.DB) {
 				continue
 			}
 			if _, err := database.Exec(
-				`INSERT INTO users (username, password_hash) VALUES (?, ?)
-				 ON CONFLICT(username) DO UPDATE SET password_hash = excluded.password_hash`,
+				`INSERT OR IGNORE INTO users (username, password_hash) VALUES (?, ?)`,
 				parts[0], string(hash),
 			); err != nil {
 				log.Printf("seed user %q: %v", parts[0], err)
@@ -117,4 +116,3 @@ func applySeed(database *sql.DB) {
 		}
 	}
 }
-
