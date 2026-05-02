@@ -32,7 +32,7 @@
 
     <p style="margin-bottom: 1.5rem;">
       <a id="history-link" href="/history{{if .SeasonID}}?season={{.SeasonID}}{{end}}">Game History</a>
-      {{if .Username}} · <a href="/enter">Record a game result</a>{{end}}
+      {{if .Username}} · <a href="/enter">Record a result</a>{{end}}
     </p>
 
     <div id="leaderboard-section">
@@ -135,7 +135,7 @@
 <meta id="season-meta" data-season-id="{{.SeasonID}}" data-season-name="{{.CurrentSeason.Name}}">
 {{if not .Rows}}
   <p>No results yet for this season.
-    {{if .Username}}<a href="/enter">Record the first game</a>.{{end}}
+    {{if .Username}}<a href="/enter">Record first game</a>.{{end}}
   </p>
 {{else}}
 <table>
