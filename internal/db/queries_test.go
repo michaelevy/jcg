@@ -628,6 +628,15 @@ func TestUpdateGameResult_DuplicateGameNumber_ReturnsErrDuplicateGameNumber(t *t
 	if !errors.Is(err, ErrDuplicateGameNumber) {
 		t.Errorf("want ErrDuplicateGameNumber, got %v", err)
 	}
+
+	// Verify transaction rolled back: game_number should still be 1
+	var gameNumber int
+	if err := database.QueryRow(`SELECT game_number FROM game_results WHERE id=1`).Scan(&gameNumber); err != nil {
+		t.Fatalf("query game_result: %v", err)
+	}
+	if gameNumber != 1 {
+		t.Errorf("want game_number=1 after rollback, got %d", gameNumber)
+	}
 }
 
 func TestUpdateGameResult_NonexistentResult_ReturnsError(t *testing.T) {

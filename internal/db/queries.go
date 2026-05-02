@@ -253,6 +253,7 @@ func InsertGameResult(db *sql.DB, seasonID, gameID int64, gameNumber int, scores
 // UpdateGameResult updates an existing game_result row and its player_scores in a transaction.
 // Scores must be pre-computed via PlacementsToScores. Returns ErrDuplicateGameNumber if the
 // (season_id, game_number) pair conflicts with another result in the same season.
+// Scores must reference players already attached to this result; mismatched player_ids are silently ignored.
 func UpdateGameResult(db *sql.DB, resultID, seasonID, gameID int64, gameNumber int, scores []PlayerScore) error {
 	tx, err := db.Begin()
 	if err != nil {

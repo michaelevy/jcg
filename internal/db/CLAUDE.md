@@ -1,13 +1,13 @@
 # Database Package
 
-Last verified: 2026-04-19
+Last verified: 2026-05-02
 
 ## Purpose
 Single source of truth for SQLite schema and all data access. Keeps SQL out of handlers.
 
 ## Contracts
-- **Exposes**: `Open(dsn)`, list helpers (Players/Seasons/Games), write helpers (CreateSeason/CreateGame/InsertGameResult), `Leaderboard(db, seasonID)`, `CurrentSeasonID(db)`, `GetSeason(db, id)`, `ComputePlacements(scores)`, `SeasonHistory(db, seasonID)`, `GetPlayer(db, id)`, `PlayerSeasonStats(db, playerID)`, `PlayerGameHistory(db, playerID)`, `GetGameResult(db, resultID)`, `GamePlayHistory(db, gameID)`, `CumulativePoints(db, seasonID)`
-- **Guarantees**: Schema applied on Open(). InsertGameResult is transactional (game_result + all player_scores atomically). ComputePlacements handles ties (shared placement, both get same season points). Leaderboard includes all players (LEFT JOIN), even those with no results. SeasonHistory groups PlacementRows by GameSummary, ordered by game_number then placement. CumulativePoints uses SQL window function (SUM OVER ORDER BY game_number) for running totals per player.
+- **Exposes**: `Open(dsn)`, list helpers (Players/Seasons/Games), write helpers (CreateSeason/CreateGame/InsertGameResult/UpdateGameResult), `Leaderboard(db, seasonID)`, `CurrentSeasonID(db)`, `GetSeason(db, id)`, `ComputePlacements(scores)`, `SeasonHistory(db, seasonID)`, `GetPlayer(db, id)`, `PlayerSeasonStats(db, playerID)`, `PlayerGameHistory(db, playerID)`, `GetGameResult(db, resultID)`, `GamePlayHistory(db, gameID)`, `CumulativePoints(db, seasonID)`, `UpdateGameResult(db, resultID, seasonID, gameID, gameNumber, scores)`
+- **Guarantees**: Schema applied on Open(). InsertGameResult is transactional (game_result + all player_scores atomically). UpdateGameResult is transactional; returns ErrDuplicateGameNumber on (season_id, game_number) conflict or sql.ErrNoRows if result ID not found. ComputePlacements handles ties (shared placement, both get same season points). Leaderboard includes all players (LEFT JOIN), even those with no results. SeasonHistory groups PlacementRows by GameSummary, ordered by game_number then placement. CumulativePoints uses SQL window function (SUM OVER ORDER BY game_number) for running totals per player.
 - **Expects**: DSN with `_foreign_keys=on`. Single-connection pool (SetMaxOpenConns(1)) to avoid SQLITE_BUSY.
 
 ## Dependencies
