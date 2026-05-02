@@ -1,6 +1,8 @@
 package db
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
 	"testing"
 )
@@ -544,5 +546,103 @@ func TestCumulativePoints_EmptySeason_ReturnsEmpty(t *testing.T) {
 	}
 	if len(rows) != 0 {
 		t.Errorf("want 0 rows for empty season, got %d", len(rows))
+	}
+}
+
+func TestUpdateGameResult_UpdatesData(t *testing.T) {
+	database, err := Open("file::memory:?cache=shared&_foreign_keys=on")
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	defer database.Close()
+
+	if _, err := database.Exec(`INSERT INTO players (id, name) VALUES (1, 'Alice'), (2, 'Bob')`); err != nil {
+		t.Fatalf("seed players: %v", err)
+	}
+	if _, err := database.Exec(`INSERT INTO seasons (id, name) VALUES (1, 'Season 1')`); err != nil {
+		t.Fatalf("seed seasons: %v", err)
+	}
+	if _, err := database.Exec(`INSERT INTO games (id, title) VALUES (1, 'Wingspan'), (2, 'Catan')`); err != nil {
+		t.Fatalf("seed games: %v", err)
+	}
+	if _, err := database.Exec(`INSERT INTO game_results (id, season_id, game_id, game_number) VALUES (1, 1, 1, 1)`); err != nil {
+		t.Fatalf("seed game_result: %v", err)
+	}
+	if _, err := database.Exec(`INSERT INTO player_scores (result_id, player_id, placement, season_points) VALUES (1, 1, 1, 4), (1, 2, 2, 2)`); err != nil {
+		t.Fatalf("seed player_scores: %v", err)
+	}
+
+	// Swap placements and change game to Catan, game number to 5.
+	scores := []PlayerScore{
+		{PlayerID: 1, Placement: 2, SeasonPoints: 2},
+		{PlayerID: 2, Placement: 1, SeasonPoints: 4},
+	}
+	if err := UpdateGameResult(database, 1, 1, 2, 5, scores); err != nil {
+		t.Fatalf("UpdateGameResult: %v", err)
+	}
+
+	var gameID, gameNumber int
+	if err := database.QueryRow(`SELECT game_id, game_number FROM game_results WHERE id = 1`).Scan(&gameID, &gameNumber); err != nil {
+		t.Fatalf("query game_result: %v", err)
+	}
+	if gameID != 2 {
+		t.Errorf("want game_id=2, got %d", gameID)
+	}
+	if gameNumber != 5 {
+		t.Errorf("want game_number=5, got %d", gameNumber)
+	}
+
+	var p1Placement, p1Points int
+	database.QueryRow(`SELECT placement, season_points FROM player_scores WHERE result_id=1 AND player_id=1`).Scan(&p1Placement, &p1Points)
+	if p1Placement != 2 || p1Points != 2 {
+		t.Errorf("player 1: want placement=2 pts=2, got placement=%d pts=%d", p1Placement, p1Points)
+	}
+
+	var p2Placement, p2Points int
+	database.QueryRow(`SELECT placement, season_points FROM player_scores WHERE result_id=1 AND player_id=2`).Scan(&p2Placement, &p2Points)
+	if p2Placement != 1 || p2Points != 4 {
+		t.Errorf("player 2: want placement=1 pts=4, got placement=%d pts=%d", p2Placement, p2Points)
+	}
+}
+
+func TestUpdateGameResult_DuplicateGameNumber_ReturnsErrDuplicateGameNumber(t *testing.T) {
+	database, err := Open("file::memory:?cache=shared&_foreign_keys=on")
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	defer database.Close()
+
+	database.Exec(`INSERT INTO players (id, name) VALUES (1, 'Alice'), (2, 'Bob')`)
+	database.Exec(`INSERT INTO seasons (id, name) VALUES (1, 'Season 1')`)
+	database.Exec(`INSERT INTO games (id, title) VALUES (1, 'Wingspan')`)
+	// Two game results in the same season with different game numbers.
+	database.Exec(`INSERT INTO game_results (id, season_id, game_id, game_number) VALUES (1, 1, 1, 1), (2, 1, 1, 2)`)
+	database.Exec(`INSERT INTO player_scores (result_id, player_id, placement, season_points) VALUES (1, 1, 1, 4), (1, 2, 2, 2), (2, 1, 2, 2), (2, 2, 1, 4)`)
+
+	scores := []PlayerScore{
+		{PlayerID: 1, Placement: 1, SeasonPoints: 4},
+		{PlayerID: 2, Placement: 2, SeasonPoints: 2},
+	}
+	// Try to update result 1 to use game_number=2, which is already taken by result 2.
+	err = UpdateGameResult(database, 1, 1, 1, 2, scores)
+	if !errors.Is(err, ErrDuplicateGameNumber) {
+		t.Errorf("want ErrDuplicateGameNumber, got %v", err)
+	}
+}
+
+func TestUpdateGameResult_NonexistentResult_ReturnsError(t *testing.T) {
+	database, err := Open("file::memory:?cache=shared&_foreign_keys=on")
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	defer database.Close()
+
+	database.Exec(`INSERT INTO seasons (id, name) VALUES (1, 'Season 1')`)
+	database.Exec(`INSERT INTO games (id, title) VALUES (1, 'Wingspan')`)
+
+	scores := []PlayerScore{}
+	err = UpdateGameResult(database, 99, 1, 1, 1, scores)
+	if !errors.Is(err, sql.ErrNoRows) {
+		t.Errorf("want sql.ErrNoRows for nonexistent result ID, got %v", err)
 	}
 }

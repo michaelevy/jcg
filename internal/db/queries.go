@@ -250,6 +250,44 @@ func InsertGameResult(db *sql.DB, seasonID, gameID int64, gameNumber int, scores
 	return tx.Commit()
 }
 
+// UpdateGameResult updates an existing game_result row and its player_scores in a transaction.
+// Scores must be pre-computed via PlacementsToScores. Returns ErrDuplicateGameNumber if the
+// (season_id, game_number) pair conflicts with another result in the same season.
+func UpdateGameResult(db *sql.DB, resultID, seasonID, gameID int64, gameNumber int, scores []PlayerScore) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	res, err := tx.Exec(
+		`UPDATE game_results SET season_id=?, game_id=?, game_number=? WHERE id=?`,
+		seasonID, gameID, gameNumber, resultID,
+	)
+	if err != nil {
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+			return ErrDuplicateGameNumber
+		}
+		return fmt.Errorf("update game_result: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return fmt.Errorf("update game_result: %w", sql.ErrNoRows)
+	}
+
+	for _, s := range scores {
+		_, err = tx.Exec(
+			`UPDATE player_scores SET placement=?, season_points=? WHERE result_id=? AND player_id=?`,
+			s.Placement, s.SeasonPoints, resultID, s.PlayerID,
+		)
+		if err != nil {
+			return fmt.Errorf("update player_score: %w", err)
+		}
+	}
+
+	return tx.Commit()
+}
+
 // PlacementRow is one player's result within a game session, used in history and detail views.
 type PlacementRow struct {
 	PlayerID   int64
