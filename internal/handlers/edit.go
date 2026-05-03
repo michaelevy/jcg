@@ -67,6 +67,17 @@ func (h *Handler) PostEditGameResult(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Load detail upfront to validate player IDs later.
+	detail, err := db.GetGameResult(h.db, resultID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "game result not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "something has gone wrong which I haven't bothered to write a proper error message for", http.StatusInternalServerError)
+		return
+	}
+
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
@@ -116,6 +127,22 @@ func (h *Handler) PostEditGameResult(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate that all submitted player IDs belong to the original game result.
+	validPlayerIDs := make(map[int64]bool)
+	for _, p := range detail.Placements {
+		validPlayerIDs[p.PlayerID] = true
+	}
+	for playerID := range placements {
+		if !validPlayerIDs[playerID] {
+			http.Error(w, fmt.Sprintf("player %d was not in this game", playerID), http.StatusBadRequest)
+			return
+		}
+	}
+
+	// NOTE: CreateGame is called before UpdateGameResult. If UpdateGameResult fails
+	// (e.g., on duplicate game number), the new game row persists as tech debt.
+	// This is a known pattern shared with entry.go; refactoring to fold CreateGame
+	// into UpdateGameResult is out of scope. Future readers: this is intentional.
 	gameID, err := db.CreateGame(h.db, gameTitle)
 	if err != nil {
 		http.Error(w, "something has gone wrong which I haven't bothered to write a proper error message for", http.StatusInternalServerError)
@@ -126,11 +153,6 @@ func (h *Handler) PostEditGameResult(w http.ResponseWriter, r *http.Request) {
 
 	if err := db.UpdateGameResult(h.db, resultID, seasonID, gameID, gameNumber, scores); err != nil {
 		if errors.Is(err, db.ErrDuplicateGameNumber) {
-			detail, dbErr := db.GetGameResult(h.db, resultID)
-			if dbErr != nil {
-				http.Error(w, "something has gone wrong which I haven't bothered to write a proper error message for", http.StatusInternalServerError)
-				return
-			}
 			seasons, dbErr := db.ListSeasons(h.db)
 			if dbErr != nil {
 				http.Error(w, "something has gone wrong which I haven't bothered to write a proper error message for", http.StatusInternalServerError)
