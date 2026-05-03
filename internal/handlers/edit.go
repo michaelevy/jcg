@@ -93,12 +93,6 @@ func (h *Handler) PostEditGameResult(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	gameID, err := db.CreateGame(h.db, gameTitle)
-	if err != nil {
-		http.Error(w, "something has gone wrong which I haven't bothered to write a proper error message for", http.StatusInternalServerError)
-		return
-	}
-
 	placements := map[int64]int{}
 	for key, vals := range r.Form {
 		if strings.HasPrefix(key, "place_") && len(vals) > 0 && vals[0] != "" {
@@ -119,6 +113,12 @@ func (h *Handler) PostEditGameResult(w http.ResponseWriter, r *http.Request) {
 
 	if len(placements) < 2 {
 		http.Error(w, "enter placements for at least 2 players", http.StatusBadRequest)
+		return
+	}
+
+	gameID, err := db.CreateGame(h.db, gameTitle)
+	if err != nil {
+		http.Error(w, "something has gone wrong which I haven't bothered to write a proper error message for", http.StatusInternalServerError)
 		return
 	}
 

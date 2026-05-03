@@ -19,11 +19,21 @@ func editTestHandler(t *testing.T) *Handler {
 	}
 	t.Cleanup(func() { database.Close() })
 
-	database.Exec(`INSERT INTO players (id, name) VALUES (1, 'Alice'), (2, 'Bob')`)
-	database.Exec(`INSERT INTO seasons (id, name) VALUES (1, 'Season 1')`)
-	database.Exec(`INSERT INTO games (id, title) VALUES (1, 'Wingspan')`)
-	database.Exec(`INSERT INTO game_results (id, season_id, game_id, game_number) VALUES (1, 1, 1, 1)`)
-	database.Exec(`INSERT INTO player_scores (result_id, player_id, placement, season_points) VALUES (1, 1, 1, 4), (1, 2, 2, 2)`)
+	if _, err := database.Exec(`INSERT INTO players (id, name) VALUES (1, 'Alice'), (2, 'Bob')`); err != nil {
+		t.Fatalf("seed players: %v", err)
+	}
+	if _, err := database.Exec(`INSERT INTO seasons (id, name) VALUES (1, 'Season 1')`); err != nil {
+		t.Fatalf("seed seasons: %v", err)
+	}
+	if _, err := database.Exec(`INSERT INTO games (id, title) VALUES (1, 'Wingspan')`); err != nil {
+		t.Fatalf("seed games: %v", err)
+	}
+	if _, err := database.Exec(`INSERT INTO game_results (id, season_id, game_id, game_number) VALUES (1, 1, 1, 1)`); err != nil {
+		t.Fatalf("seed game_results: %v", err)
+	}
+	if _, err := database.Exec(`INSERT INTO player_scores (result_id, player_id, placement, season_points) VALUES (1, 1, 1, 4), (1, 2, 2, 2)`); err != nil {
+		t.Fatalf("seed player_scores: %v", err)
+	}
 
 	tmpl := template.Must(template.New("root").Funcs(template.FuncMap{
 		"add": func(a, b int) int { return a + b },
@@ -102,8 +112,12 @@ func TestPostEditGameResult_ValidSubmit_RedirectsAndUpdates(t *testing.T) {
 func TestPostEditGameResult_DuplicateGameNumber_RerendersWithError(t *testing.T) {
 	h := editTestHandler(t)
 	// Add a second result so game_number=2 is taken.
-	h.db.Exec(`INSERT INTO game_results (id, season_id, game_id, game_number) VALUES (2, 1, 1, 2)`)
-	h.db.Exec(`INSERT INTO player_scores (result_id, player_id, placement, season_points) VALUES (2, 1, 1, 4), (2, 2, 2, 2)`)
+	if _, err := h.db.Exec(`INSERT INTO game_results (id, season_id, game_id, game_number) VALUES (2, 1, 1, 2)`); err != nil {
+		t.Fatalf("seed second game_results: %v", err)
+	}
+	if _, err := h.db.Exec(`INSERT INTO player_scores (result_id, player_id, placement, season_points) VALUES (2, 1, 1, 4), (2, 2, 2, 2)`); err != nil {
+		t.Fatalf("seed second player_scores: %v", err)
+	}
 
 	form := url.Values{
 		"season_id":   {"1"},
