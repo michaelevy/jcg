@@ -1,6 +1,6 @@
 # JCG - Board Game Score Tracker
 
-Last verified: 2026-04-27 (Phase 5 complete: CSRF/secure-cookie/session-sweep security hardening)
+Last verified: 2026-05-02 (Edit game results feature added: GET/POST /game-results/{id}/edit)
 
 ## Tech Stack
 - Language: Go 1.25.5
@@ -31,6 +31,7 @@ Last verified: 2026-04-27 (Phase 5 complete: CSRF/secure-cookie/session-sweep se
 - `GET /history` - Season game history (public, season param, HTMX partial support)
 - `GET /players/{id}` - Player profile with per-season stats and game history (public)
 - `GET /game-results/{id}` - Game result detail with play history for that game (public)
+- `GET /game-results/{id}/edit`, `POST /game-results/{id}/edit` - Edit existing game result (auth required, CSRF on POST)
 - `GET /login`, `POST /login`, `POST /logout` - Auth
 - `GET /enter`, `POST /enter` - Game result entry (auth required)
 - `POST /enter/season` - HTMX inline season creation (auth required)
@@ -48,7 +49,7 @@ Last verified: 2026-04-27 (Phase 5 complete: CSRF/secure-cookie/session-sweep se
 - Templates: `cmd/server/templates/` (embedded at compile time)
 
 ## Security
-- CSRF: per-session token issued on login, validated on POST /enter, POST /enter/season, POST /logout via `middleware.RequireCSRF`. Pre-session token (cookie + form) protects POST /login. Tokens are auto-injected into templates by `Handler.render` from request context; HTMX requests pick up the token via the `htmx:configRequest` listener reading the `csrf-token` meta tag.
+- CSRF: per-session token issued on login, validated on POST /enter, POST /enter/season, POST /game-results/{id}/edit, POST /logout via `middleware.RequireCSRF`. Pre-session token (cookie + form) protects POST /login. Tokens are auto-injected into templates by `Handler.render` from request context; HTMX requests pick up the token via the `htmx:configRequest` listener reading the `csrf-token` meta tag.
 - Sessions: 24h TTL, deleted on access if expired, swept every hour by `middleware.StartSessionSweep`. Cookie is HttpOnly + SameSite=Lax; `Secure` flag toggled by `JCG_SECURE_COOKIE`.
 
 ## Known TODOs
