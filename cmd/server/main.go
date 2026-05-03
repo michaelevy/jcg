@@ -61,6 +61,8 @@ func main() {
 	mux.Handle("GET /history", middleware.LoadSession(http.HandlerFunc(h.SeasonGames)))
 	mux.Handle("GET /players/{id}", middleware.LoadSession(http.HandlerFunc(h.PlayerProfile)))
 	mux.Handle("GET /game-results/{id}", middleware.LoadSession(http.HandlerFunc(h.GameResultDetail)))
+	mux.Handle("GET /game-results/{id}/edit", middleware.RequireAuth(http.HandlerFunc(h.GetEditGameResult)))
+	mux.Handle("POST /game-results/{id}/edit", middleware.RequireAuth(middleware.RequireCSRF(http.HandlerFunc(h.PostEditGameResult))))
 
 	mux.Handle("GET /login", middleware.LoadSession(http.HandlerFunc(h.LoginPage)))
 	mux.Handle("POST /login", middleware.LoadSession(http.HandlerFunc(h.LoginSubmit)))
