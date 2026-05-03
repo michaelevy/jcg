@@ -11,6 +11,7 @@
     </p>
 
     <h2>Game {{.Detail.GameNumber}} — {{.Detail.SeasonName}}</h2>
+    {{if .Username}}<p><a href="/game-results/{{.Detail.ResultID}}/edit">Edit this result</a></p>{{end}}
     <table>
       <thead>
         <tr><th>#</th><th>Player</th><th>Points</th></tr>
