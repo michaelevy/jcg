@@ -35,7 +35,7 @@
     {{else}}
     <table>
       <thead>
-        <tr><th>Season</th><th>#</th><th>Game</th><th>Place</th><th>Points</th></tr>
+        <tr><th>Season</th><th>#</th><th>Game</th><th>Place</th></tr>
       </thead>
       <tbody>
         {{range .GameHistory}}
@@ -46,7 +46,6 @@
             <a href="/game-results/{{.ResultID}}">{{.GameTitle}}</a>
           </td>
           <td>{{.Placement}}</td>
-          <td>{{.Points}}</td>
         </tr>
         {{end}}
       </tbody>

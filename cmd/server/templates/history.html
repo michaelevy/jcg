@@ -42,14 +42,13 @@
   </h3>
   <table>
     <thead>
-      <tr><th>#</th><th>Player</th><th>Points</th></tr>
+      <tr><th>#</th><th>Player</th></tr>
     </thead>
     <tbody>
       {{range .Placements}}
       <tr>
         <td>{{.Placement}}</td>
         <td><a href="/players/{{.PlayerID}}">{{.PlayerName}}</a></td>
-        <td>{{.Points}}</td>
       </tr>
       {{end}}
     </tbody>
