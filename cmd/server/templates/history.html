@@ -6,9 +6,6 @@
   {{template "nav" .}}
   <main>
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-      <h1>
-        {{if .Season.Name}}{{.Season.Name}} — Game History{{else}}Game History{{end}}
-      </h1>
       {{if .Seasons}}
       <select id="season-selector"
               hx-get="/history"
@@ -33,6 +30,7 @@
 {{end}}
 
 {{define "history-table"}}
+<h1>{{if .Season.Name}}{{.Season.Name}} — Game History{{else}}Game History{{end}}</h1>
 {{if not .Games}}
   <p>No games recorded for this season yet.</p>
 {{else}}

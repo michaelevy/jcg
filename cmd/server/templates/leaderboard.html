@@ -58,7 +58,8 @@
       });
       gameNumbers.sort(function(a, b) { return a - b; });
 
-      var colors = ['#4e79a7', '#f28e2b', '#e15759', '#76b7b2'];
+      var playerColors = { 'Mark': '#e15759', 'James': '#f28e2b', 'Dan': '#59a14f', 'Michael': '#4e79a7' };
+      var fallbackColors = ['#76b7b2', '#b07aa1', '#ff9da7', '#9c755f'];
       var datasets = players.map(function(name, i) {
         var pointsMap = {};
         rows.filter(function(r) { return r.PlayerName === name; })
@@ -66,8 +67,8 @@
         return {
           label: name,
           data: gameNumbers.map(function(g) { return pointsMap[g] != null ? pointsMap[g] : null; }),
-          borderColor: colors[i % colors.length],
-          backgroundColor: colors[i % colors.length],
+          borderColor: playerColors[name] || fallbackColors[i % fallbackColors.length],
+          backgroundColor: playerColors[name] || fallbackColors[i % fallbackColors.length],
           tension: 0.1,
           spanGaps: false,
         };
