@@ -660,8 +660,8 @@ func GameSeasonMatrix(d *sql.DB) ([]Season, []GameSeasonRow, error) {
 		return nil, nil, err
 	}
 
-	matrix := make([]GameSeasonRow, len(games))
-	for i, g := range games {
+	var matrix []GameSeasonRow
+	for _, g := range games {
 		counts := make([]int, len(seasons))
 		total := 0
 		for j, s := range seasons {
@@ -669,12 +669,15 @@ func GameSeasonMatrix(d *sql.DB) ([]Season, []GameSeasonRow, error) {
 			counts[j] = c
 			total += c
 		}
-		matrix[i] = GameSeasonRow{
+		if total == 0 {
+			continue
+		}
+		matrix = append(matrix, GameSeasonRow{
 			GameID:    g.ID,
 			GameTitle: g.Title,
 			Counts:    counts,
 			Total:     total,
-		}
+		})
 	}
 
 	return seasons, matrix, nil
