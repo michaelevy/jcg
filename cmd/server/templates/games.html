@@ -1,0 +1,37 @@
+{{define "games"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>{{template "head" .}}</head>
+<body>
+  {{template "nav" .}}
+  <main>
+    <h1>Games</h1>
+    {{if not .Matrix}}
+      <p>No games recorded yet.</p>
+    {{else}}
+    <table>
+      <thead>
+        <tr>
+          <th>Game</th>
+          {{range .Seasons}}<th>{{.Name}}</th>{{end}}
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Matrix}}
+        <tr>
+          <td>{{.GameTitle}}</td>
+          {{range .Counts}}
+          <td style="text-align: center;">{{if .}}{{.}}{{end}}</td>
+          {{end}}
+          <td style="text-align: center; font-weight: bold;">{{.Total}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+    {{end}}
+    <p style="margin-top: 1.5rem;"><a href="/">← Leaderboard</a></p>
+  </main>
+</body>
+</html>
+{{end}}

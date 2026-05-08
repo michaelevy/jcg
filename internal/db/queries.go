@@ -601,6 +601,85 @@ func GamePlayHistory(db *sql.DB, gameID int64) ([]PlayHistoryRow, error) {
 	return out, rows.Err()
 }
 
+// GameSeasonRow holds one game's play counts across all seasons plus a total.
+type GameSeasonRow struct {
+	GameID    int64
+	GameTitle string
+	Counts    []int // one per season, same order as the seasons slice returned by GameSeasonMatrix
+	Total     int
+}
+
+// GameSeasonMatrix returns seasons in chronological order and, for each game,
+// how many times it was played per season plus an overall total.
+func GameSeasonMatrix(d *sql.DB) ([]Season, []GameSeasonRow, error) {
+	seasonRows, err := d.Query(`SELECT id, name, start_date, end_date FROM seasons ORDER BY id ASC`)
+	if err != nil {
+		return nil, nil, err
+	}
+	var seasons []Season
+	for seasonRows.Next() {
+		var s Season
+		if err := seasonRows.Scan(&s.ID, &s.Name, &s.StartDate, &s.EndDate); err != nil {
+			seasonRows.Close()
+			return nil, nil, err
+		}
+		seasons = append(seasons, s)
+	}
+	seasonRows.Close()
+	if err := seasonRows.Err(); err != nil {
+		return nil, nil, err
+	}
+
+	games, err := ListGames(d)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	seasonIdx := make(map[int64]int, len(seasons))
+	for i, s := range seasons {
+		seasonIdx[s.ID] = i
+	}
+
+	type playKey struct{ gameID, seasonID int64 }
+	plays := map[playKey]int{}
+	countRows, err := d.Query(`SELECT game_id, season_id, COUNT(*) FROM game_results GROUP BY game_id, season_id`)
+	if err != nil {
+		return nil, nil, err
+	}
+	for countRows.Next() {
+		var gameID, seasonID int64
+		var n int
+		if err := countRows.Scan(&gameID, &seasonID, &n); err != nil {
+			countRows.Close()
+			return nil, nil, err
+		}
+		plays[playKey{gameID, seasonID}] = n
+	}
+	countRows.Close()
+	if err := countRows.Err(); err != nil {
+		return nil, nil, err
+	}
+
+	matrix := make([]GameSeasonRow, len(games))
+	for i, g := range games {
+		counts := make([]int, len(seasons))
+		total := 0
+		for j, s := range seasons {
+			c := plays[playKey{g.ID, s.ID}]
+			counts[j] = c
+			total += c
+		}
+		matrix[i] = GameSeasonRow{
+			GameID:    g.ID,
+			GameTitle: g.Title,
+			Counts:    counts,
+			Total:     total,
+		}
+	}
+
+	return seasons, matrix, nil
+}
+
 // CumulativePoints returns the running cumulative season points for each player
 // at each game number within the season, ordered by game_number then player name.
 // Uses a SQLite window function (requires SQLite ≥ 3.25).

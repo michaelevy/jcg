@@ -59,6 +59,7 @@ func main() {
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticSub))))
 	mux.Handle("GET /{$}", middleware.LoadSession(http.HandlerFunc(h.Leaderboard)))
 	mux.Handle("GET /history", middleware.LoadSession(http.HandlerFunc(h.SeasonGames)))
+	mux.Handle("GET /games", middleware.LoadSession(http.HandlerFunc(h.Games)))
 	mux.Handle("GET /players/{id}", middleware.LoadSession(http.HandlerFunc(h.PlayerProfile)))
 	mux.Handle("GET /game-results/{id}", middleware.LoadSession(http.HandlerFunc(h.GameResultDetail)))
 	mux.Handle("GET /game-results/{id}/edit", middleware.RequireAuth(http.HandlerFunc(h.GetEditGameResult)))
