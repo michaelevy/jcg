@@ -18,13 +18,15 @@
         </tr>
       </thead>
       <tbody>
+        {{$username := $.Username}}
         {{range .Matrix}}
         <tr>
           <td>{{.GameTitle}}</td>
           {{range .Counts}}
           <td style="text-align: center;">{{if .}}{{.}}{{end}}</td>
           {{end}}
-          <td style="text-align: center; font-weight: bold;">{{.Total}}</td>
+          <td style="text-align: center; font-weight: bold;">{{if .Total}}{{.Total}}{{end}}</td>
+          <td>{{if and $username (eq .Total 0)}}<button hx-delete="/games/{{.GameID}}" hx-target="closest tr" hx-swap="outerHTML" hx-confirm="Delete {{.GameTitle}}?">Delete</button>{{end}}</td>
         </tr>
         {{end}}
       </tbody>

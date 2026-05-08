@@ -60,6 +60,7 @@ func main() {
 	mux.Handle("GET /{$}", middleware.LoadSession(http.HandlerFunc(h.Leaderboard)))
 	mux.Handle("GET /history", middleware.LoadSession(http.HandlerFunc(h.SeasonGames)))
 	mux.Handle("GET /games", middleware.LoadSession(http.HandlerFunc(h.Games)))
+	mux.Handle("DELETE /games/{id}", middleware.RequireAuth(middleware.RequireCSRF(http.HandlerFunc(h.DeleteGame))))
 	mux.Handle("GET /players/{id}", middleware.LoadSession(http.HandlerFunc(h.PlayerProfile)))
 	mux.Handle("GET /game-results/{id}", middleware.LoadSession(http.HandlerFunc(h.GameResultDetail)))
 	mux.Handle("GET /game-results/{id}/edit", middleware.RequireAuth(http.HandlerFunc(h.GetEditGameResult)))

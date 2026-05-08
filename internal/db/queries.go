@@ -660,8 +660,8 @@ func GameSeasonMatrix(d *sql.DB) ([]Season, []GameSeasonRow, error) {
 		return nil, nil, err
 	}
 
-	var matrix []GameSeasonRow
-	for _, g := range games {
+	matrix := make([]GameSeasonRow, len(games))
+	for i, g := range games {
 		counts := make([]int, len(seasons))
 		total := 0
 		for j, s := range seasons {
@@ -669,18 +669,32 @@ func GameSeasonMatrix(d *sql.DB) ([]Season, []GameSeasonRow, error) {
 			counts[j] = c
 			total += c
 		}
-		if total == 0 {
-			continue
-		}
-		matrix = append(matrix, GameSeasonRow{
+		matrix[i] = GameSeasonRow{
 			GameID:    g.ID,
 			GameTitle: g.Title,
 			Counts:    counts,
 			Total:     total,
-		})
+		}
 	}
 
 	return seasons, matrix, nil
+}
+
+// DeleteGame removes a game by ID. Returns sql.ErrNoRows if not found,
+// or a foreign-key error if the game has existing results.
+func DeleteGame(d *sql.DB, id int64) error {
+	res, err := d.Exec(`DELETE FROM games WHERE id = ?`, id)
+	if err != nil {
+		return err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }
 
 // CumulativePoints returns the running cumulative season points for each player
