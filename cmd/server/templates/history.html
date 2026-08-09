@@ -38,7 +38,8 @@
 <div style="border: 1px solid #ddd; border-radius: 4px; padding: 1rem; margin-bottom: 1rem;">
   <h3 style="margin: 0 0 0.5rem 0;">
     Game {{.GameNumber}}:
-    <a href="/game-results/{{.ResultID}}">{{.Title}}</a>
+    <a href="/games/{{.GameID}}">{{.Title}}</a>
+    {{if $.Username}} · <a href="/game-results/{{.ResultID}}/edit">Edit</a>{{end}}
   </h3>
   <table>
     <thead>

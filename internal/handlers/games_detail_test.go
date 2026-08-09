@@ -10,7 +10,7 @@ import (
 	"jcg/internal/db"
 )
 
-func gameResultTestHandler(t *testing.T) *Handler {
+func gameDetailTestHandler(t *testing.T) *Handler {
 	t.Helper()
 	database, err := db.Open("file::memory:?cache=shared&_foreign_keys=on")
 	if err != nil {
@@ -28,49 +28,49 @@ func gameResultTestHandler(t *testing.T) *Handler {
 	tmpl := template.Must(template.New("").Funcs(template.FuncMap{
 		"add": func(a, b int) int { return a + b },
 	}).Parse(`
-		{{define "game_result"}}RESULT:{{.Detail.GameTitle}}:{{range .Detail.Placements}}{{.PlayerName}};{{end}}{{end}}
+		{{define "game"}}GAME:{{.Game.Title}}:{{range .Totals}}{{.PlayerName}}={{.TotalPoints}};{{end}}{{end}}
 	`))
 	return New(database, tmpl)
 }
 
-func TestGameResultDetail_RendersDetail(t *testing.T) {
-	h := gameResultTestHandler(t)
-	r := httptest.NewRequest("GET", "/game-results/1", nil)
+func TestGameDetail_RendersDetail(t *testing.T) {
+	h := gameDetailTestHandler(t)
+	r := httptest.NewRequest("GET", "/games/1", nil)
 	r.SetPathValue("id", "1")
 	w := httptest.NewRecorder()
-	h.GameResultDetail(w, r)
+	h.GameDetail(w, r)
 	if w.Code != http.StatusOK {
 		t.Errorf("want 200, got %d", w.Code)
 	}
 	body := w.Body.String()
-	if !strings.HasPrefix(body, "RESULT:") {
-		t.Errorf("want result template, got: %s", body)
+	if !strings.HasPrefix(body, "GAME:") {
+		t.Errorf("want game template, got: %s", body)
 	}
 	if !strings.Contains(body, "Wingspan") {
 		t.Errorf("want Wingspan in response, got: %s", body)
 	}
-	if !strings.Contains(body, "Alice") {
-		t.Errorf("want Alice in placements, got: %s", body)
+	if !strings.Contains(body, "Alice=4") {
+		t.Errorf("want Alice's total points in response, got: %s", body)
 	}
 }
 
-func TestGameResultDetail_InvalidID_Returns400(t *testing.T) {
-	h := gameResultTestHandler(t)
-	r := httptest.NewRequest("GET", "/game-results/bad", nil)
+func TestGameDetail_InvalidID_Returns400(t *testing.T) {
+	h := gameDetailTestHandler(t)
+	r := httptest.NewRequest("GET", "/games/bad", nil)
 	r.SetPathValue("id", "bad")
 	w := httptest.NewRecorder()
-	h.GameResultDetail(w, r)
+	h.GameDetail(w, r)
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("want 400, got %d", w.Code)
 	}
 }
 
-func TestGameResultDetail_NotFound_Returns404(t *testing.T) {
-	h := gameResultTestHandler(t)
-	r := httptest.NewRequest("GET", "/game-results/999", nil)
+func TestGameDetail_NotFound_Returns404(t *testing.T) {
+	h := gameDetailTestHandler(t)
+	r := httptest.NewRequest("GET", "/games/999", nil)
 	r.SetPathValue("id", "999")
 	w := httptest.NewRecorder()
-	h.GameResultDetail(w, r)
+	h.GameDetail(w, r)
 	if w.Code != http.StatusNotFound {
 		t.Errorf("want 404, got %d", w.Code)
 	}

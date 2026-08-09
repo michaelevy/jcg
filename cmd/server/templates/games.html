@@ -21,7 +21,7 @@
         {{$username := $.Username}}
         {{range .Matrix}}
         <tr>
-          <td>{{.GameTitle}}</td>
+          <td><a href="/games/{{.GameID}}">{{.GameTitle}}</a></td>
           {{range .Counts}}
           <td style="text-align: center;">{{if .}}{{.}}{{end}}</td>
           {{end}}

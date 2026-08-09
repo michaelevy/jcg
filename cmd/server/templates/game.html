@@ -1,34 +1,36 @@
-{{define "game_result"}}
+{{define "game"}}
 <!DOCTYPE html>
 <html lang="en">
 <head>{{template "head" .}}</head>
 <body>
   {{template "nav" .}}
   <main>
-    <h1>{{.Detail.GameTitle}}</h1>
-    <p>
-      <a href="/history?season={{.Detail.SeasonID}}">← {{.Detail.SeasonName}} Game History</a>
-    </p>
+    <h1>{{.Game.Title}}</h1>
+    <p><a href="/games">← All Games</a></p>
 
-    <h2>Game {{.Detail.GameNumber}} — {{.Detail.SeasonName}}</h2>
-    {{if .Username}}<p><a href="/game-results/{{.Detail.ResultID}}/edit">Edit this result</a></p>{{end}}
+    <h2>Total Points</h2>
+    {{if not .Totals}}
+      <p>No results recorded yet.</p>
+    {{else}}
     <table>
       <thead>
-        <tr><th>#</th><th>Player</th></tr>
+        <tr><th>#</th><th>Player</th><th>Points</th></tr>
       </thead>
       <tbody>
-        {{range .Detail.Placements}}
+        {{range $i, $t := .Totals}}
         <tr>
-          <td>{{.Placement}}</td>
-          <td><a href="/players/{{.PlayerID}}">{{.PlayerName}}</a></td>
+          <td>{{add $i 1}}</td>
+          <td><a href="/players/{{$t.PlayerID}}">{{$t.PlayerName}}</a></td>
+          <td><strong>{{$t.TotalPoints}}</strong></td>
         </tr>
         {{end}}
       </tbody>
     </table>
+    {{end}}
 
     <h2 style="margin-top: 2rem;">Play History</h2>
     {{if not .PlayHistory}}
-      <p>No other sessions on record.</p>
+      <p>No sessions on record.</p>
     {{else}}
     <table>
       <thead>
@@ -38,7 +40,7 @@
         {{range .PlayHistory}}
         <tr>
           <td><a href="/history?season={{.SeasonID}}">{{.SeasonName}}</a></td>
-          <td><a href="/game-results/{{.ResultID}}">{{.GameNumber}}</a></td>
+          <td>{{.GameNumber}}</td>
           <td><a href="/players/{{.WinnerID}}">{{.WinnerName}}</a></td>
         </tr>
         {{end}}

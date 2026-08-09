@@ -1,6 +1,6 @@
 # JCG - Board Game Score Tracker
 
-Last verified: 2026-05-02 (Edit game results feature added: GET/POST /game-results/{id}/edit)
+Last verified: 2026-08-09 (Game-results detail page replaced by season-agnostic GET /games/{id})
 
 ## Tech Stack
 - Language: Go 1.25.5
@@ -30,7 +30,9 @@ Last verified: 2026-05-02 (Edit game results feature added: GET/POST /game-resul
 - `GET /` - Leaderboard with cumulative points graph (public, default season = latest)
 - `GET /history` - Season game history (public, season param, HTMX partial support)
 - `GET /players/{id}` - Player profile with per-season stats and game history (public)
-- `GET /game-results/{id}` - Game result detail with play history for that game (public)
+- `GET /games` - Game catalog matrix (plays per season + totals), links to game detail (public)
+- `GET /games/{id}` - Season-agnostic game detail: all-time points totals per player + full play history (public)
+- `DELETE /games/{id}` - Delete a game with zero recorded results (auth required, CSRF)
 - `GET /game-results/{id}/edit`, `POST /game-results/{id}/edit` - Edit existing game result (auth required, CSRF on POST)
 - `GET /login`, `POST /login`, `POST /logout` - Auth
 - `GET /enter`, `POST /enter` - Game result entry (auth required)

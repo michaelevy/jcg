@@ -601,6 +601,49 @@ func GamePlayHistory(db *sql.DB, gameID int64) ([]PlayHistoryRow, error) {
 	return out, rows.Err()
 }
 
+// GetGame returns a game's title by ID. Returns sql.ErrNoRows if not found.
+func GetGame(db *sql.DB, id int64) (Game, error) {
+	var g Game
+	err := db.QueryRow(`SELECT id, title FROM games WHERE id = ?`, id).Scan(&g.ID, &g.Title)
+	return g, err
+}
+
+// GameTotalRow holds one player's all-time season points earned from a single game.
+type GameTotalRow struct {
+	PlayerID    int64
+	PlayerName  string
+	TotalPoints int
+}
+
+// GameSeasonPointsTotals returns, for a given game, each player's summed season_points
+// across all sessions of that game, ordered highest total first.
+func GameSeasonPointsTotals(db *sql.DB, gameID int64) ([]GameTotalRow, error) {
+	const q = `
+		SELECT p.id, p.name, SUM(ps.season_points) AS total
+		FROM player_scores ps
+		JOIN game_results gr ON gr.id = ps.result_id
+		JOIN players p ON p.id = ps.player_id
+		WHERE gr.game_id = ?
+		GROUP BY p.id, p.name
+		ORDER BY total DESC, p.name ASC
+	`
+	rows, err := db.Query(q, gameID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []GameTotalRow
+	for rows.Next() {
+		var r GameTotalRow
+		if err := rows.Scan(&r.PlayerID, &r.PlayerName, &r.TotalPoints); err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}
+
 // GameSeasonRow holds one game's play counts across all seasons plus a total.
 type GameSeasonRow struct {
 	GameID    int64
